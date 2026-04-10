@@ -166,7 +166,7 @@ export default function ProfilePage() {
   const inputStyle = {
     width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10,
     padding: "10px 14px", fontSize: "0.95rem", outline: "none",
-    fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box"
+    fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22"
   };
 
   const labelStyle = {
