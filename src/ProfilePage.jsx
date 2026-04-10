@@ -46,7 +46,7 @@ export default function ProfilePage() {
 
   const role = profile?.role || "buyer";
   const isSeller = role === "seller";
-  const MENU = isSeller ? SELLER_MENU : BUYER_MENU;
+  const MENU = SELLER_MENU;
 
   const [activeTab, setActiveTab] = useState("profil");
   const [editing, setEditing] = useState(false);
