@@ -3,13 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
 
-const BUYER_MENU = [
-  { id: "profil", label: "Profil", icon: "👤" },
-  { id: "nakupy", label: "Historie nákupů", icon: "🛒" },
-  { id: "zpravy", label: "Zprávy", icon: "💬" },
-  { id: "heslo", label: "Změna hesla", icon: "🔒" },
-];
-
 const SELLER_MENU = [
   { id: "profil", label: "Profil", icon: "👤" },
   { id: "inzeraty", label: "Moje inzeráty", icon: "📋" },
@@ -20,6 +13,9 @@ const SELLER_MENU = [
   { id: "heslo", label: "Změna hesla", icon: "🔒" },
 ];
 
+const KATEGORIE = ["Vybavení", "Krmivo & pamlsky", "Oblečení", "Hračky", "Přeprava", "Péče & hygiena"];
+const ZVIRATA = ["Pes", "Kočka", "Hlodavec", "Ryba", "Pták", "Plaz", "Jiné"];
+const STAVY = ["Nový", "Jako nový", "Dobrý", "Použitý"];
 const MONTHS = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čer", "Čec", "Srp", "Zář", "Říj", "Lis", "Pro"];
 
 function MiniBarChart({ data }) {
@@ -28,11 +24,7 @@ function MiniBarChart({ data }) {
     <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 80, marginTop: 8 }}>
       {data.map((val, i) => (
         <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <div style={{
-            width: "100%", background: val > 0 ? "#2d6a4f" : "#e8f5ef",
-            borderRadius: "4px 4px 0 0",
-            height: `${Math.max((val / max) * 64, val > 0 ? 4 : 0)}px`,
-          }} />
+          <div style={{ width: "100%", background: val > 0 ? "#2d6a4f" : "#e8f5ef", borderRadius: "4px 4px 0 0", height: `${Math.max((val / max) * 64, val > 0 ? 4 : 0)}px` }} />
           <span style={{ fontSize: "0.6rem", color: "#8a9e92" }}>{MONTHS[i]}</span>
         </div>
       ))}
@@ -45,20 +37,25 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   const role = profile?.role || "buyer";
-  const isSeller = role === "seller";
   const MENU = SELLER_MENU;
 
   const [activeTab, setActiveTab] = useState("profil");
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState({
-    name: profile?.name || "",
-    city: profile?.city || "",
-    bio: profile?.bio || "",
-  });
+  const [form, setForm] = useState({ name: profile?.name || "", city: profile?.city || "", bio: profile?.bio || "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [passwords, setPasswords] = useState({ new: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState("");
+
+  // Formulář pro přidání inzerátu
+  const [inzeratForm, setInzeratForm] = useState({
+    title: "", price: "", city: "", desc: "",
+    kategorie: "", zvire: "", stav: "Nový",
+  });
+  const [fotky, setFotky] = useState([]); // pole File objektů
+  const [fotkyPreviews, setFotkyPreviews] = useState([]); // preview URL
+  const [inzeratSaving, setInzeratSaving] = useState(false);
+  const [inzeratMsg, setInzeratMsg] = useState("");
 
   const mockInzeraty = [
     { id: 1, title: "Pelíšek M/L", price: 340, status: "aktivní", views: 45, emoji: "🛏️" },
@@ -94,6 +91,74 @@ export default function ProfilePage() {
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
+  // Nahrání fotek
+  const handleFotkyChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (fotky.length + files.length > 5) {
+      setInzeratMsg("⚠️ Maximálně 5 fotek.");
+      return;
+    }
+    const newFotky = [...fotky, ...files].slice(0, 5);
+    setFotky(newFotky);
+    const previews = newFotky.map(f => URL.createObjectURL(f));
+    setFotkyPreviews(previews);
+  };
+
+  const removeFotka = (idx) => {
+    const newFotky = fotky.filter((_, i) => i !== idx);
+    const newPreviews = fotkyPreviews.filter((_, i) => i !== idx);
+    setFotky(newFotky);
+    setFotkyPreviews(newPreviews);
+  };
+
+  // Publikování inzerátu
+  const handleInzeratSubmit = async () => {
+    if (!inzeratForm.title || !inzeratForm.price || !inzeratForm.city || !inzeratForm.kategorie || !inzeratForm.zvire) {
+      setInzeratMsg("⚠️ Vyplň všechna povinná pole.");
+      return;
+    }
+    setInzeratSaving(true);
+    setInzeratMsg("");
+
+    try {
+      // Nahrát fotky do Supabase Storage
+      const fotoUrls = [];
+      for (const fotka of fotky) {
+        const fileName = `${user.id}/${Date.now()}_${fotka.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("inzeraty")
+          .upload(fileName, fotka);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+        fotoUrls.push(urlData.publicUrl);
+      }
+
+      // Uložit inzerát do DB
+      const { error: dbError } = await supabase.from("inzeraty").insert({
+        title: inzeratForm.title,
+        price: parseInt(inzeratForm.price),
+        city: inzeratForm.city,
+        desc: inzeratForm.desc,
+        kategorie: inzeratForm.kategorie,
+        zvire: inzeratForm.zvire,
+        stav: inzeratForm.stav,
+        foto_urls: fotoUrls,
+        seller_id: user.id,
+        seller_name: profile?.name || user.email,
+      });
+      if (dbError) throw dbError;
+
+      setInzeratMsg("🎉 Inzerát byl zveřejněn!");
+      setInzeratForm({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
+      setFotky([]);
+      setFotkyPreviews([]);
+      setTimeout(() => { setInzeratMsg(""); setActiveTab("inzeraty"); }, 2000);
+    } catch (err) {
+      setInzeratMsg("❌ Chyba: " + err.message);
+    }
+    setInzeratSaving(false);
+  };
+
   const roleLabel = { buyer: "🛒 Kupující", seller: "🏪 Prodejce", vet: "🩺 Veterinář" };
 
   if (!user) { navigate("/"); return null; }
@@ -102,6 +167,11 @@ export default function ProfilePage() {
     width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10,
     padding: "10px 14px", fontSize: "0.95rem", outline: "none",
     fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box"
+  };
+
+  const labelStyle = {
+    fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92",
+    textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6
   };
 
   return (
@@ -121,6 +191,7 @@ export default function ProfilePage() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 28 }}>
 
+        {/* Levá lišta */}
         <div style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", marginBottom: 12, border: "1px solid #ede8e0", textAlign: "center" }}>
             <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", margin: "0 auto 12px" }}>🐾</div>
@@ -128,18 +199,6 @@ export default function ProfilePage() {
             <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem", fontWeight: 600 }}>
               {roleLabel[role] || "🐾 Uživatel"}
             </span>
-            {isSeller && (
-              <div style={{ marginTop: 12, display: "flex", justifyContent: "center", gap: 16 }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#2d6a4f" }}>{mockInzeraty.length}</div>
-                  <div style={{ fontSize: "0.7rem", color: "#8a9e92" }}>inzerátů</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#2d6a4f" }}>⭐ 4.8</div>
-                  <div style={{ fontSize: "0.7rem", color: "#8a9e92" }}>hodnocení</div>
-                </div>
-              </div>
-            )}
           </div>
 
           <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1px solid #ede8e0" }}>
@@ -162,8 +221,10 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Hlavní obsah */}
         <div style={{ flex: 1 }}>
 
+          {/* PROFIL */}
           {activeTab === "profil" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -172,7 +233,7 @@ export default function ProfilePage() {
               </div>
               {!editing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {[{ label: "Celé jméno", value: profile?.name || "—" }, { label: "E-mail", value: user?.email }, { label: "Město", value: profile?.city || "—" }, { label: "O mně", value: profile?.bio || "—" }, { label: "Role", value: roleLabel[role] }].map(({ label, value }) => (
+                  {[{ label: "Celé jméno", value: profile?.name || "—" }, { label: "E-mail", value: user?.email }, { label: "Město", value: profile?.city || "—" }, { label: "O mně", value: profile?.bio || "—" }].map(({ label, value }) => (
                     <div key={label} style={{ borderBottom: "1px solid #f7f4ef", paddingBottom: 16 }}>
                       <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
                       <div style={{ color: "#1c2b22", fontSize: "0.95rem" }}>{value}</div>
@@ -184,12 +245,12 @@ export default function ProfilePage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {[{ label: "Celé jméno", key: "name", placeholder: "Jana Nováková" }, { label: "Město", key: "city", placeholder: "Praha" }].map(({ label, key, placeholder }) => (
                     <div key={key}>
-                      <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>{label}</label>
+                      <label style={labelStyle}>{label}</label>
                       <input value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} />
                     </div>
                   ))}
                   <div>
-                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>O mně</label>
+                    <label style={labelStyle}>O mně</label>
                     <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Něco o sobě..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
                   </div>
                   {msg && <div style={{ color: msg.includes("Chyba") ? "#b91c1c" : "#166534", fontSize: "0.85rem" }}>{msg}</div>}
@@ -202,17 +263,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "nakupy" && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Historie nákupů</h2>
-              <div style={{ textAlign: "center", padding: "60px 20px", color: "#8a9e92" }}>
-                <div style={{ fontSize: "3rem", marginBottom: 16 }}>🛒</div>
-                <p>Zatím žádné nákupy.</p>
-                <button onClick={() => navigate("/")} style={{ marginTop: 16, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Procházet inzeráty</button>
-              </div>
-            </div>
-          )}
-
+          {/* MOJE INZERÁTY */}
           {activeTab === "inzeraty" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -221,7 +272,10 @@ export default function ProfilePage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {mockInzeraty.map(item => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12 }}>
+                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer" }}
+                    onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
+                    onMouseOut={e => e.currentTarget.style.background = "#fff"}
+                  >
                     <div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{item.emoji}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
@@ -237,25 +291,108 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* PŘIDAT INZERÁT */}
           {activeTab === "pridat" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat inzerát</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 500 }}>
-                {[{ label: "Název inzerátu", placeholder: "Pelíšek pro psa, vel. M" }, { label: "Cena (Kč)", placeholder: "350" }, { label: "Město", placeholder: "Praha" }].map(({ label, placeholder }) => (
-                  <div key={label}>
-                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>{label}</label>
-                    <input placeholder={placeholder} style={inputStyle} />
-                  </div>
-                ))}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+                {/* FOTKY */}
                 <div>
-                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>Popis</label>
-                  <textarea placeholder="Stav, rozměry, důvod prodeje..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
+                  <label style={labelStyle}>Fotky (max. 5) *</label>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                    {fotkyPreviews.map((src, i) => (
+                      <div key={i} style={{ position: "relative", width: 90, height: 90 }}>
+                        <img src={src} alt="" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1.5px solid #ede8e0" }} />
+                        <button onClick={() => removeFotka(i)} style={{
+                          position: "absolute", top: -6, right: -6,
+                          width: 22, height: 22, borderRadius: "50%",
+                          background: "#b91c1c", color: "#fff", border: "none",
+                          cursor: "pointer", fontSize: "0.7rem", fontWeight: 700,
+                          display: "flex", alignItems: "center", justifyContent: "center"
+                        }}>✕</button>
+                      </div>
+                    ))}
+                    {fotky.length < 5 && (
+                      <label style={{
+                        width: 90, height: 90, borderRadius: 10,
+                        border: "2px dashed #b7d9c7", display: "flex",
+                        flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", color: "#8a9e92", fontSize: "0.75rem",
+                        background: "#f7f4ef", gap: 4,
+                      }}>
+                        <span style={{ fontSize: "1.5rem" }}>📷</span>
+                        Přidat
+                        <input type="file" accept="image/*" multiple onChange={handleFotkyChange} style={{ display: "none" }} />
+                      </label>
+                    )}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8a9e92" }}>JPG, PNG, WEBP · Max. 5 MB na fotku</div>
                 </div>
-                <button style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✓ Zveřejnit inzerát</button>
+
+                {/* NÁZEV */}
+                <div>
+                  <label style={labelStyle}>Název inzerátu *</label>
+                  <input value={inzeratForm.title} onChange={e => setInzeratForm(f => ({ ...f, title: e.target.value }))} placeholder="Pelíšek pro psa, vel. M" style={inputStyle} />
+                </div>
+
+                {/* KATEGORIE + ZVÍŘE */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Kategorie *</label>
+                    <select value={inzeratForm.kategorie} onChange={e => setInzeratForm(f => ({ ...f, kategorie: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                      <option value="">Vybrat...</option>
+                      {KATEGORIE.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Zvíře *</label>
+                    <select value={inzeratForm.zvire} onChange={e => setInzeratForm(f => ({ ...f, zvire: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                      <option value="">Vybrat...</option>
+                      {ZVIRATA.map(z => <option key={z} value={z}>{z}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* CENA + STAV + MĚSTO */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Cena (Kč) *</label>
+                    <input type="number" value={inzeratForm.price} onChange={e => setInzeratForm(f => ({ ...f, price: e.target.value }))} placeholder="350" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Stav *</label>
+                    <select value={inzeratForm.stav} onChange={e => setInzeratForm(f => ({ ...f, stav: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                      {STAVY.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Město *</label>
+                    <input value={inzeratForm.city} onChange={e => setInzeratForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" style={inputStyle} />
+                  </div>
+                </div>
+
+                {/* POPIS */}
+                <div>
+                  <label style={labelStyle}>Popis</label>
+                  <textarea value={inzeratForm.desc} onChange={e => setInzeratForm(f => ({ ...f, desc: e.target.value }))} placeholder="Stav, rozměry, důvod prodeje, případné vady..." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} />
+                </div>
+
+                {inzeratMsg && (
+                  <div style={{ background: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#880e4f" : "#1b5e20" }}>
+                    {inzeratMsg}
+                  </div>
+                )}
+
+                <button onClick={handleInzeratSubmit} disabled={inzeratSaving} style={{ background: inzeratSaving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: inzeratSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
+                  {inzeratSaving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}
+                </button>
               </div>
             </div>
           )}
 
+          {/* PŘÍJMY */}
           {activeTab === "prijmy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -275,6 +412,7 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* HODNOCENÍ */}
           {activeTab === "hodnoceni" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
@@ -296,6 +434,7 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* ZPRÁVY */}
           {activeTab === "zpravy" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Zprávy</h2>
@@ -306,13 +445,14 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* HESLO */}
           {activeTab === "heslo" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Změna hesla</h2>
               <div style={{ maxWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
                 {[{ label: "Nové heslo", key: "new", placeholder: "Min. 6 znaků" }, { label: "Potvrdit heslo", key: "confirm", placeholder: "Zopakuj heslo" }].map(({ label, key, placeholder }) => (
                   <div key={key}>
-                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 }}>{label}</label>
+                    <label style={labelStyle}>{label}</label>
                     <input type="password" value={passwords[key]} onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} />
                   </div>
                 ))}
