@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "./useAuth";
 import AuthModal from "./AuthModal";
-import { supabase } from "./supabase";
+import ProfilePage from "./ProfilePage";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
 
@@ -57,20 +57,14 @@ const CSS = `
     overflow: hidden;
     animation: fadeUp 0.4s ease both;
   }
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-lg);
-  }
+  .card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
   .pill {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 5px 13px; border-radius: 30px; font-size: 0.8rem;
     font-weight: 600; cursor: pointer; transition: all 0.18s; border: none;
     font-family: 'DM Sans', sans-serif;
   }
-  .pill-outline {
-    background: var(--white); color: var(--text-mid);
-    border: 1.5px solid var(--sand-dark);
-  }
+  .pill-outline { background: var(--white); color: var(--text-mid); border: 1.5px solid var(--sand-dark); }
   .pill-outline:hover { border-color: var(--green); color: var(--green); }
   .pill-active { background: var(--green); color: var(--white); border: 1.5px solid var(--green); }
   .pill-dark { background: var(--text); color: var(--white); border: 1.5px solid var(--text); }
@@ -170,7 +164,6 @@ function CondBadge({ cond }) {
 function Card({ item, onOpen, onSave, delay }) {
   return (
     <div className="card" style={{ animationDelay:`${delay}ms` }} onClick={() => onOpen(item)}>
-      {/* Image area */}
       <div style={{ height:150, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
         display:"flex", alignItems:"center", justifyContent:"center",
         fontSize:"3.8rem", position:"relative" }}>
@@ -185,7 +178,6 @@ function Card({ item, onOpen, onSave, delay }) {
           {item.saved ? "♥" : "♡"}
         </button>
       </div>
-      {/* Info */}
       <div style={{ padding:"14px 16px 16px" }}>
         <div style={{ fontSize:"0.8rem", color:"var(--text-light)", marginBottom:5, fontWeight:500 }}>
           📍 {item.city} · {item.time}
@@ -268,7 +260,6 @@ function AddModal({ onClose, onAdd }) {
             width:36, height:36, cursor:"pointer", fontSize:"1rem", color:"var(--text-mid)", fontWeight:700 }}>✕</button>
         </div>
         <div style={{ padding:"20px 24px 26px", display:"flex", flexDirection:"column", gap:16 }}>
-          {/* Emoji picker */}
           <div>
             <label className="label">Ikona produktu</label>
             <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
@@ -334,6 +325,7 @@ export default function PetMarket() {
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { user, profile, signOut } = useAuth();
 
@@ -365,6 +357,9 @@ export default function PetMarket() {
 
   const savedCount = items.filter(i => i.saved).length;
 
+  // Jméno uživatele pro navbar
+  const userName = profile?.full_name || profile?.name || user?.email?.split("@")[0] || "Účet";
+
   return (
     <div style={{ minHeight:"100vh", background:"var(--sand)" }}>
       <style>{CSS}</style>
@@ -374,6 +369,7 @@ export default function PetMarket() {
         position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 12px rgba(44,80,58,0.07)" }}>
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"0 24px",
           display:"flex", alignItems:"center", height:68, gap:18 }}>
+
           {/* Logo */}
           <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginRight:4 }}>
             <div style={{ width:42, height:42, borderRadius:12,
@@ -389,6 +385,7 @@ export default function PetMarket() {
               </div>
             </div>
           </div>
+
           {/* Search */}
           <div style={{ flex:1, position:"relative" }}>
             <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", fontSize:"1rem", opacity:0.45 }}>🔍</span>
@@ -396,6 +393,7 @@ export default function PetMarket() {
               style={{ paddingLeft:38, borderRadius:30, background:"var(--sand)" }}
               placeholder="Hledat pelíšek, granule, klec…" />
           </div>
+
           {/* Actions */}
           <div style={{ display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
             {savedCount > 0 && (
@@ -404,7 +402,35 @@ export default function PetMarket() {
                 ♥ {savedCount}
               </div>
             )}
-            <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => user ? signOut() : setShowAuth(true)}>{user ? `👤 ${profile?.name || "Účet"}` : "Přihlásit se"}</button>
+
+            {/* ── TOTO JE OPRAVENÉ TLAČÍTKO ── */}
+            {user ? (
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <button
+                  className="btn-secondary"
+                  style={{ padding:"8px 16px" }}
+                  onClick={() => setShowProfile(true)}
+                >
+                  👤 {userName}
+                </button>
+                <button
+                  className="btn-secondary"
+                  style={{ padding:"8px 14px", fontSize:"0.8rem", borderColor:"var(--sand-dark)", color:"var(--text-mid)" }}
+                  onClick={signOut}
+                >
+                  Odhlásit
+                </button>
+              </div>
+            ) : (
+              <button
+                className="btn-secondary"
+                style={{ padding:"8px 16px" }}
+                onClick={() => setShowAuth(true)}
+              >
+                Přihlásit se
+              </button>
+            )}
+
             <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>
               + Prodat
             </button>
@@ -418,10 +444,9 @@ export default function PetMarket() {
           <h1 style={{ color:"var(--white)", fontSize:"clamp(1.5rem,3vw,2.2rem)", marginBottom:8, letterSpacing:"-0.02em" }}>
             Vše pro tvého mazlíčka — z druhé ruky
           </h1>
-          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
+          <p style={{ color:"rgba(231,160,160,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
             Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.
           </p>
-          {/* Stats */}
           <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
             {[["🛍️", `${items.length} inzerátů`], ["🐾", "4 kategorie"], ["🏙️", "Celá ČR"]].map(([icon,label]) => (
               <div key={label} style={{ background:"rgba(255,255,255,0.15)", borderRadius:10,
@@ -437,7 +462,6 @@ export default function PetMarket() {
       {/* ── FILTERS ── */}
       <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"16px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
-          {/* Category tabs */}
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
             {CATS.map(c => (
               <button key={c.id} className={`pill ${cat===c.id ? "pill-active" : "pill-outline"}`}
@@ -446,7 +470,6 @@ export default function PetMarket() {
               </button>
             ))}
           </div>
-          {/* Animal + price + sort */}
           <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
             {ANIMALS.map(a => (
               <button key={a.id} className={`pill ${animal===a.id ? "pill-dark" : "pill-dark-outline"}`}
@@ -507,6 +530,12 @@ export default function PetMarket() {
       {showAdd && (
         <AddModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />
       )}
+      {showProfile && user && (
+        <ProfilePage onClose={() => setShowProfile(false)} />
+      )}
+      {showAuth && (
+        <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />
+      )}
 
       {/* ── TOAST ── */}
       {toast && (
@@ -518,7 +547,7 @@ export default function PetMarket() {
           {toast}
         </div>
       )}
-{showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />}
+
       {/* ── FOOTER ── */}
       <footer style={{ background:"var(--text)", color:"rgba(255,255,255,0.5)",
         padding:"24px", textAlign:"center", fontSize:"0.8rem" }}>
