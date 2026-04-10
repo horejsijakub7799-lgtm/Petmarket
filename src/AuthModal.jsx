@@ -2,17 +2,17 @@ import { useState } from "react";
 import { supabase } from "./supabase";
 
 export default function AuthModal({ onClose, onAuthSuccess }) {
-  const [mode, setMode] = useState("login"); // "login" | "register" | "reset"
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState("user");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   const clearMessages = () => { setError(null); setSuccess(null); };
 
-  // ── Přihlášení ──
   const handleLogin = async () => {
     if (!email || !password) { setError("Vyplň e-mail a heslo."); return; }
     setLoading(true); clearMessages();
@@ -23,7 +23,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     onClose();
   };
 
-  // ── Registrace ──
   const handleRegister = async () => {
     if (!name || !email || !password) { setError("Vyplň všechna pole."); return; }
     if (password.length < 6) { setError("Heslo musí mít alespoň 6 znaků."); return; }
@@ -31,26 +30,22 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name, role: role === "vet" ? "vet" : "buyer" } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
     setSuccess("✅ Účet vytvořen! Zkontroluj e-mail pro potvrzení.");
   };
 
-  // ── Reset hesla ──
   const handleReset = async () => {
     if (!email) { setError("Zadej svůj e-mail."); return; }
     setLoading(true); clearMessages();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
     setLoading(false);
     if (error) { setError(error.message); return; }
     setSuccess("📬 Odkaz pro reset hesla byl odeslán na tvůj e-mail.");
   };
 
-  // ── Google OAuth ──
   const handleGoogle = async () => {
     setLoading(true); clearMessages();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -66,82 +61,44 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     else handleReset();
   };
 
-  const titles = {
-    login: "Přihlásit se",
-    register: "Vytvořit účet",
-    reset: "Reset hesla",
+  const titles = { login: "Přihlásit se", register: "Vytvořit účet", reset: "Reset hesla" };
+
+  const inputStyle = {
+    width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10,
+    padding: "11px 14px", fontSize: "0.9rem", outline: "none",
+    background: "#f7f4ef", color: "#1c2b22",
+    fontFamily: "'DM Sans', sans-serif", transition: "border-color 0.18s",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle = {
+    fontSize: "0.75rem", fontWeight: 600, color: "#4a5e52",
+    textTransform: "uppercase", letterSpacing: "0.06em",
+    display: "block", marginBottom: 6,
   };
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(28,43,34,0.55)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        zIndex: 300, padding: 20,
-        backdropFilter: "blur(6px)",
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: "#fff", borderRadius: 22,
-          width: "100%", maxWidth: 420,
-          boxShadow: "0 12px 40px rgba(44,80,58,0.18)",
-          animation: "popIn 0.25s ease",
-          overflow: "hidden",
-        }}
-      >
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20, backdropFilter: "blur(6px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, width: "100%", maxWidth: 420, boxShadow: "0 12px 40px rgba(44,80,58,0.18)", overflow: "hidden" }}>
+
         {/* Header */}
-        <div style={{
-          padding: "22px 24px 18px",
-          borderBottom: "1px solid #ede8e0",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-        }}>
+        <div style={{ padding: "22px 24px 18px", borderBottom: "1px solid #ede8e0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: "#2d6a4f", display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: "1.2rem",
-            }}>🐾</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
             <div>
-              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.15rem", color: "#1c2b22" }}>
-                {titles[mode]}
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "#8a9e92", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Pet Market
-              </div>
+              <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.15rem", color: "#1c2b22" }}>{titles[mode]}</div>
+              <div style={{ fontSize: "0.7rem", color: "#8a9e92", letterSpacing: "0.08em", textTransform: "uppercase" }}>Pet Market</div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "#f7f4ef", border: "none", borderRadius: "50%",
-              width: 36, height: 36, cursor: "pointer", fontSize: "1rem",
-              color: "#4a5e52", fontWeight: 700,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >✕</button>
+          <button onClick={onClose} style={{ background: "#f7f4ef", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", fontSize: "1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
 
         {/* Body */}
         <div style={{ padding: "24px 24px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Google button — pouze pro login/register */}
+          {/* Google */}
           {mode !== "reset" && (
-            <button
-              onClick={handleGoogle}
-              disabled={loading}
-              style={{
-                width: "100%", padding: "11px 16px",
-                border: "1.5px solid #ede8e0", borderRadius: 10,
-                background: "#fff", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                fontSize: "0.9rem", fontWeight: 600, color: "#1c2b22",
-                fontFamily: "'DM Sans', sans-serif",
-                transition: "background 0.15s",
-              }}
+            <button onClick={handleGoogle} disabled={loading} style={{ width: "100%", padding: "11px 16px", border: "1.5px solid #ede8e0", borderRadius: 10, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: "0.9rem", fontWeight: 600, color: "#1c2b22", fontFamily: "'DM Sans', sans-serif" }}
               onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
               onMouseOut={e => e.currentTarget.style.background = "#fff"}
             >
@@ -163,26 +120,48 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {/* Jméno — jen při registraci */}
+          {/* Výběr typu účtu — jen při registraci */}
           {mode === "register" && (
             <div>
-              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#4a5e52", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
-                Celé jméno
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Jana Nováková"
-                onKeyDown={e => e.key === "Enter" && handleSubmit()}
-                style={{
-                  width: "100%", border: "1.5px solid #ede8e0",
-                  borderRadius: 10, padding: "11px 14px",
-                  fontSize: "0.9rem", outline: "none",
-                  background: "#f7f4ef", color: "#1c2b22",
-                  fontFamily: "'DM Sans', sans-serif",
-                  transition: "border-color 0.18s",
-                }}
+              <label style={labelStyle}>Typ účtu</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  onClick={() => setRole("user")}
+                  style={{
+                    padding: "12px 10px", borderRadius: 12, cursor: "pointer",
+                    border: role === "user" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0",
+                    background: role === "user" ? "#e8f5ef" : "#fff",
+                    textAlign: "center", fontFamily: "'DM Sans', sans-serif",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🐾</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "user" ? "#2d6a4f" : "#1c2b22" }}>Uživatel</div>
+                  <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Nakupuji & prodávám</div>
+                </button>
+                <button
+                  onClick={() => setRole("vet")}
+                  style={{
+                    padding: "12px 10px", borderRadius: 12, cursor: "pointer",
+                    border: role === "vet" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0",
+                    background: role === "vet" ? "#e8f5ef" : "#fff",
+                    textAlign: "center", fontFamily: "'DM Sans', sans-serif",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🩺</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "vet" ? "#2d6a4f" : "#1c2b22" }}>Veterinář / Salon</div>
+                  <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Profesionální účet</div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Jméno */}
+          {mode === "register" && (
+            <div>
+              <label style={labelStyle}>Celé jméno</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Jana Nováková" onKeyDown={e => e.key === "Enter" && handleSubmit()} style={inputStyle}
                 onFocus={e => e.target.style.borderColor = "#2d6a4f"}
                 onBlur={e => e.target.style.borderColor = "#ede8e0"}
               />
@@ -191,48 +170,18 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
 
           {/* E-mail */}
           <div>
-            <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#4a5e52", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
-              E-mail
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="jana@email.cz"
-              onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              style={{
-                width: "100%", border: "1.5px solid #ede8e0",
-                borderRadius: 10, padding: "11px 14px",
-                fontSize: "0.9rem", outline: "none",
-                background: "#f7f4ef", color: "#1c2b22",
-                fontFamily: "'DM Sans', sans-serif",
-                transition: "border-color 0.18s",
-              }}
+            <label style={labelStyle}>E-mail</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jana@email.cz" onKeyDown={e => e.key === "Enter" && handleSubmit()} style={inputStyle}
               onFocus={e => e.target.style.borderColor = "#2d6a4f"}
               onBlur={e => e.target.style.borderColor = "#ede8e0"}
             />
           </div>
 
-          {/* Heslo — ne při resetu */}
+          {/* Heslo */}
           {mode !== "reset" && (
             <div>
-              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#4a5e52", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 6 }}>
-                Heslo
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder={mode === "register" ? "Min. 6 znaků" : "••••••••"}
-                onKeyDown={e => e.key === "Enter" && handleSubmit()}
-                style={{
-                  width: "100%", border: "1.5px solid #ede8e0",
-                  borderRadius: 10, padding: "11px 14px",
-                  fontSize: "0.9rem", outline: "none",
-                  background: "#f7f4ef", color: "#1c2b22",
-                  fontFamily: "'DM Sans', sans-serif",
-                  transition: "border-color 0.18s",
-                }}
+              <label style={labelStyle}>Heslo</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === "register" ? "Min. 6 znaků" : "••••••••"} onKeyDown={e => e.key === "Enter" && handleSubmit()} style={inputStyle}
                 onFocus={e => e.target.style.borderColor = "#2d6a4f"}
                 onBlur={e => e.target.style.borderColor = "#ede8e0"}
               />
@@ -240,73 +189,31 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
           )}
 
           {/* Error / Success */}
-          {error && (
-            <div style={{
-              background: "#fce4ec", border: "1px solid #f48fb1",
-              borderRadius: 10, padding: "10px 14px",
-              fontSize: "0.85rem", color: "#880e4f",
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-          {success && (
-            <div style={{
-              background: "#e8f5e9", border: "1px solid #a5d6a7",
-              borderRadius: 10, padding: "10px 14px",
-              fontSize: "0.85rem", color: "#1b5e20",
-            }}>
-              {success}
-            </div>
-          )}
+          {error && <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: "#880e4f" }}>⚠️ {error}</div>}
+          {success && <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: "#1b5e20" }}>{success}</div>}
 
           {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            style={{
-              width: "100%", padding: "13px",
-              background: loading ? "#b5cec0" : "#2d6a4f",
-              color: "#fff", border: "none", borderRadius: 10,
-              fontSize: "0.95rem", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
-              fontFamily: "'DM Sans', sans-serif",
-              boxShadow: "0 2px 12px rgba(45,106,79,0.25)",
-              transition: "background 0.18s",
-            }}
-          >
+          <button onClick={handleSubmit} disabled={loading} style={{ width: "100%", padding: "13px", background: loading ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, fontSize: "0.95rem", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
             {loading ? "Moment…" : titles[mode]}
           </button>
 
-          {/* Přepínání režimů */}
+          {/* Přepínání */}
           <div style={{ textAlign: "center", fontSize: "0.85rem", color: "#4a5e52", display: "flex", flexDirection: "column", gap: 8 }}>
             {mode === "login" && (
               <>
-                <span>
-                  Nemáš účet?{" "}
-                  <button onClick={() => { setMode("register"); clearMessages(); }}
-                    style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>
-                    Zaregistruj se
-                  </button>
+                <span>Nemáš účet?{" "}
+                  <button onClick={() => { setMode("register"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>Zaregistruj se</button>
                 </span>
-                <button onClick={() => { setMode("reset"); clearMessages(); }}
-                  style={{ background: "none", border: "none", color: "#8a9e92", cursor: "pointer", fontSize: "0.8rem", fontFamily: "'DM Sans', sans-serif" }}>
-                  Zapomněl/a jsem heslo
-                </button>
+                <button onClick={() => { setMode("reset"); clearMessages(); }} style={{ background: "none", border: "none", color: "#8a9e92", cursor: "pointer", fontSize: "0.8rem", fontFamily: "'DM Sans', sans-serif" }}>Zapomněl/a jsem heslo</button>
               </>
             )}
             {mode === "register" && (
-              <span>
-                Už máš účet?{" "}
-                <button onClick={() => { setMode("login"); clearMessages(); }}
-                  style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>
-                  Přihlásit se
-                </button>
+              <span>Už máš účet?{" "}
+                <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>Přihlásit se</button>
               </span>
             )}
             {mode === "reset" && (
-              <button onClick={() => { setMode("login"); clearMessages(); }}
-                style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>
-                ← Zpět na přihlášení
-              </button>
+              <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>← Zpět na přihlášení</button>
             )}
           </div>
         </div>
