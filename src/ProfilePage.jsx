@@ -66,7 +66,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
 
       {/* Navbar */}
@@ -176,7 +176,7 @@ export default function ProfilePage() {
                         value={form[key]}
                         onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
                         placeholder={placeholder}
-                        style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box" }}
+                        style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#ffffff", boxSizing: "border-box" }}
                       />
                     </div>
                   ))}
@@ -186,7 +186,7 @@ export default function ProfilePage() {
                       value={form.bio}
                       onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                       placeholder="Něco o sobě..."
-                      style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", minHeight: 100, resize: "vertical", background: "#f7f4ef", boxSizing: "border-box" }}
+                      style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", minHeight: 100, resize: "vertical", background: "#ffffff", boxSizing: "border-box" }}
                     />
                   </div>
                   {msg && <div style={{ color: msg.includes("Chyba") ? "#b91c1c" : "#166534", fontSize: "0.85rem" }}>{msg}</div>}
@@ -241,7 +241,7 @@ export default function ProfilePage() {
                       value={passwords[key]}
                       onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))}
                       placeholder={placeholder}
-                      style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box" }}
+                      style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#ffffff", boxSizing: "border-box" }}
                     />
                   </div>
                 ))}
