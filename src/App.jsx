@@ -409,7 +409,7 @@ export default function PetMarket() {
                 <button
                   className="btn-secondary"
                   style={{ padding:"8px 16px" }}
-                  onClick={() => setShowProfile(true)}
+                  onClick={() => window.location.href = "/profil"}
                 >
                   👤 {userName}
                 </button>
