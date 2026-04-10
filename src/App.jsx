@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "./useAuth";
+import AuthModal from "./AuthModal";
 import { supabase } from "./supabase";
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`;
@@ -332,6 +334,8 @@ export default function PetMarket() {
   const [selected, setSelected] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const { user, profile, signOut } = useAuth();
 
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -400,6 +404,7 @@ export default function PetMarket() {
                 ♥ {savedCount}
               </div>
             )}
+            <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => user ? signOut() : setShowAuth(true)}>{user ? `👤 ${profile?.name || "Účet"}` : "Přihlásit se"}</button>
             <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>
               + Prodat
             </button>
@@ -513,7 +518,7 @@ export default function PetMarket() {
           {toast}
         </div>
       )}
-
+{showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />}
       {/* ── FOOTER ── */}
       <footer style={{ background:"var(--text)", color:"rgba(255,255,255,0.5)",
         padding:"24px", textAlign:"center", fontSize:"0.8rem" }}>
