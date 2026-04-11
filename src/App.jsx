@@ -147,9 +147,13 @@ const ANIMALS = [
 ];
 const COND_COLORS = {
   "nový":      { bg:"#e3f2fd", color:"#0d47a1" },
+  "Nový":      { bg:"#e3f2fd", color:"#0d47a1" },
   "jako nový": { bg:"#e8f5e9", color:"#1b5e20" },
+  "Jako nový": { bg:"#e8f5e9", color:"#1b5e20" },
   "dobrý":     { bg:"#fff8e1", color:"#e65100" },
+  "Dobrý":     { bg:"#fff8e1", color:"#e65100" },
   "použitý":   { bg:"#fce4ec", color:"#880e4f" },
+  "Použitý":   { bg:"#fce4ec", color:"#880e4f" },
 };
 
 function CondBadge({ cond }) {
@@ -163,6 +167,10 @@ function CondBadge({ cond }) {
 }
 
 function Card({ item, onOpen, onSave, delay }) {
+  const discountedPrice = item.discount_percent
+    ? Math.round(item.price * (1 - item.discount_percent / 100))
+    : null;
+
   return (
     <div className="card" style={{ animationDelay:`${delay}ms` }} onClick={() => onOpen(item)}>
       <div style={{ height:150, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
@@ -172,13 +180,19 @@ function Card({ item, onOpen, onSave, delay }) {
           ? <img src={item.foto_urls[0]} alt={item.title}
               style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
           : (item.emoji || "🐾")}
+        {item.discount_percent && (
+          <div style={{ position:"absolute", top:10, left:10, background:"#e07b39", color:"#fff",
+            borderRadius:20, padding:"3px 10px", fontSize:"0.75rem", fontWeight:700, zIndex:1 }}>
+            -{item.discount_percent}%
+          </div>
+        )}
         <button onClick={e => { e.stopPropagation(); onSave(item.id); }}
           style={{ position:"absolute", top:10, right:10,
             background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)",
             border:"none", borderRadius:"50%", width:34, height:34,
             cursor:"pointer", fontSize:"0.95rem", display:"flex",
             alignItems:"center", justifyContent:"center",
-            boxShadow:"0 1px 6px rgba(0,0,0,0.12)", transition:"all 0.2s" }}>
+            boxShadow:"0 1px 6px rgba(0,0,0,0.12)", transition:"all 0.2s", zIndex:1 }}>
           {item.saved ? "♥" : "♡"}
         </button>
       </div>
@@ -189,9 +203,22 @@ function Card({ item, onOpen, onSave, delay }) {
         <div style={{ fontWeight:600, fontSize:"0.95rem", color:"var(--text)", lineHeight:1.35,
           marginBottom:10, minHeight:40 }}>{item.title}</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
-            {item.price} Kč
-          </span>
+          <div>
+            {discountedPrice ? (
+              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
+                  {discountedPrice} Kč
+                </span>
+                <span style={{ fontSize:"0.8rem", color:"var(--text-light)", textDecoration:"line-through" }}>
+                  {item.price} Kč
+                </span>
+              </div>
+            ) : (
+              <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
+                {item.price} Kč
+              </span>
+            )}
+          </div>
           <CondBadge cond={item.cond || item.condition} />
         </div>
       </div>
@@ -203,6 +230,10 @@ function DetailModal({ item, onClose, onContact, onSave }) {
   const [fotoIdx, setFotoIdx] = useState(0);
   if (!item) return null;
   const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
+  const discountedPrice = item.discount_percent
+    ? Math.round(item.price * (1 - item.discount_percent / 100))
+    : null;
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
@@ -212,6 +243,12 @@ function DetailModal({ item, onClose, onContact, onSave }) {
           {fotos
             ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
             : (item.emoji || "🐾")}
+          {item.discount_percent && (
+            <div style={{ position:"absolute", top:14, left:14, background:"#e07b39", color:"#fff",
+              borderRadius:20, padding:"4px 12px", fontSize:"0.85rem", fontWeight:700 }}>
+              -{item.discount_percent}%
+            </div>
+          )}
           {fotos && fotos.length > 1 && <>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
               style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)",
@@ -239,8 +276,24 @@ function DetailModal({ item, onClose, onContact, onSave }) {
             <h2 style={{ fontSize:"1.25rem", color:"var(--text)", lineHeight:1.3 }}>{item.title}</h2>
             <CondBadge cond={item.cond || item.condition} />
           </div>
-          <div style={{ fontSize:"2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif", marginBottom:14 }}>
-            {item.price} Kč
+          <div style={{ marginBottom:14 }}>
+            {discountedPrice ? (
+              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                <span style={{ fontSize:"2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
+                  {discountedPrice} Kč
+                </span>
+                <span style={{ fontSize:"1rem", color:"var(--text-light)", textDecoration:"line-through" }}>
+                  {item.price} Kč
+                </span>
+                <span style={{ background:"var(--accent-light)", color:"var(--accent)", borderRadius:20, padding:"2px 10px", fontSize:"0.8rem", fontWeight:700 }}>
+                  -{item.discount_percent}%
+                </span>
+              </div>
+            ) : (
+              <div style={{ fontSize:"2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
+                {item.price} Kč
+              </div>
+            )}
           </div>
           <p style={{ color:"var(--text-mid)", fontSize:"0.92rem", lineHeight:1.65, marginBottom:18 }}>
             {item.desc || item.description}
