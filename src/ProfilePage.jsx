@@ -18,6 +18,73 @@ const ZVIRATA = ["Pes", "Kočka", "Hlodavec", "Ryba", "Pták", "Plaz", "Jiné"];
 const STAVY = ["Nový", "Jako nový", "Dobrý", "Použitý"];
 const MONTHS = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čer", "Čec", "Srp", "Zář", "Říj", "Lis", "Pro"];
 
+const COND_COLORS = {
+  "nový": { bg: "#e3f2fd", color: "#0d47a1" },
+  "Nový": { bg: "#e3f2fd", color: "#0d47a1" },
+  "jako nový": { bg: "#e8f5e9", color: "#1b5e20" },
+  "Jako nový": { bg: "#e8f5e9", color: "#1b5e20" },
+  "dobrý": { bg: "#fff8e1", color: "#e65100" },
+  "Dobrý": { bg: "#fff8e1", color: "#e65100" },
+  "použitý": { bg: "#fce4ec", color: "#880e4f" },
+  "Použitý": { bg: "#fce4ec", color: "#880e4f" },
+};
+
+function CondBadge({ cond }) {
+  const s = COND_COLORS[cond] || { bg: "#f5f5f5", color: "#555" };
+  return (
+    <span style={{ background: s.bg, color: s.color, fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+      {cond}
+    </span>
+  );
+}
+
+function InzeratDetail({ item, onClose }) {
+  const [fotoIdx, setFotoIdx] = useState(0);
+  if (!item) return null;
+  const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, maxWidth: 500, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(44,80,58,0.14)" }}>
+        <div style={{ height: 300, background: "linear-gradient(145deg, #f2faf6, #f7f4ef)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
+          {fotos
+            ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            : <span style={{ fontSize: "5rem" }}>🐾</span>}
+          {fotos && fotos.length > 1 && <>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
+              style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>‹</button>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }}
+              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>›</button>
+            <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5 }}>
+              {fotos.map((_, i) => (
+                <div key={i} onClick={e => { e.stopPropagation(); setFotoIdx(i); }}
+                  style={{ width: 7, height: 7, borderRadius: "50%", cursor: "pointer", background: i === fotoIdx ? "#fff" : "rgba(255,255,255,0.5)" }} />
+              ))}
+            </div>
+          </>}
+          <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "50%", width: 38, height: 38, cursor: "pointer", fontSize: "1.1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        </div>
+        <div style={{ padding: "24px 26px 28px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 12 }}>
+            <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.25rem", color: "#1c2b22", lineHeight: 1.3 }}>{item.title}</h2>
+            <CondBadge cond={item.condition || item.cond} />
+          </div>
+          <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif", marginBottom: 14 }}>
+            {item.price} Kč
+          </div>
+          {item.description && (
+            <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.65, marginBottom: 18 }}>{item.description}</p>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+            {[`📍 ${item.city}`, `🏷️ ${item.category || "—"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (
+              <span key={tag} style={{ background: "#f7f4ef", border: "1px solid #ede8e0", borderRadius: 20, padding: "5px 12px", fontSize: "0.78rem", color: "#4a5e52", fontWeight: 500 }}>{tag}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MiniBarChart({ data }) {
   const max = Math.max(...data, 1);
   return (
@@ -46,35 +113,31 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState("");
   const [passwords, setPasswords] = useState({ new: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState("");
+  const [selectedInzerat, setSelectedInzerat] = useState(null);
 
-  // Formulář pro přidání inzerátu
   const [inzeratForm, setInzeratForm] = useState({
     title: "", price: "", city: "", desc: "",
     kategorie: "", zvire: "", stav: "Nový",
   });
-  const [fotky, setFotky] = useState([]); // pole File objektů
-  const [fotkyPreviews, setFotkyPreviews] = useState([]); // preview URL
+  const [fotky, setFotky] = useState([]);
+  const [fotkyPreviews, setFotkyPreviews] = useState([]);
   const [inzeratSaving, setInzeratSaving] = useState(false);
   const [inzeratMsg, setInzeratMsg] = useState("");
-const [mojeInzeraty, setMojeInzeraty] = useState([]);
+  const [mojeInzeraty, setMojeInzeraty] = useState([]);
 
-useEffect(() => {
-  if (!user) return;
-  const fetchMoje = async () => {
-    const { data, error } = await supabase
-      .from("inzeraty")
-      .select("*")
-      .eq("seller_id", user.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) setMojeInzeraty(data);
-  };
-  fetchMoje();
-}, [user]);
-  const mockInzeraty = [
-    { id: 1, title: "Pelíšek M/L", price: 340, status: "aktivní", views: 45, emoji: "🛏️" },
-    { id: 2, title: "Vodítko kožené", price: 115, status: "aktivní", views: 23, emoji: "🔗" },
-    { id: 3, title: "Zimní bundička", price: 145, status: "prodáno", views: 89, emoji: "🧥" },
-  ];
+  useEffect(() => {
+    if (!user) return;
+    const fetchMoje = async () => {
+      const { data, error } = await supabase
+        .from("inzeraty")
+        .select("*")
+        .eq("seller_id", user.id)
+        .order("created_at", { ascending: false });
+      if (!error && data) setMojeInzeraty(data);
+    };
+    fetchMoje();
+  }, [user]);
+
   const mockPrijmy = [0, 0, 145, 0, 340, 115, 0, 0, 0, 0, 0, 0];
   const mockHodnoceni = [
     { id: 1, from: "Jana K.", rating: 5, text: "Rychlé jednání, zboží přesně jak popsáno!", date: "15. 3. 2026" },
@@ -104,9 +167,7 @@ useEffect(() => {
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
-  // Nahrání fotek
-  const compressImage = (file) => {
-  return new Promise((resolve) => {
+  const compressImage = (file) => new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     const img = new Image();
     img.onload = () => {
@@ -120,20 +181,15 @@ useEffect(() => {
     };
     img.src = URL.createObjectURL(file);
   });
-};
 
-const handleFotkyChange = async (e) => {
-  const files = Array.from(e.target.files);
-  if (fotky.length + files.length > 5) {
-    setInzeratMsg("⚠️ Maximálně 5 fotek.");
-    return;
-  }
-  const compressed = await Promise.all(files.map(compressImage));
-  const newFotky = [...fotky, ...compressed].slice(0, 5);
-  setFotky(newFotky);
-  setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
-};
-
+  const handleFotkyChange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (fotky.length + files.length > 5) { setInzeratMsg("⚠️ Maximálně 5 fotek."); return; }
+    const compressed = await Promise.all(files.map(compressImage));
+    const newFotky = [...fotky, ...compressed].slice(0, 5);
+    setFotky(newFotky);
+    setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
+  };
 
   const removeFotka = (idx) => {
     const newFotky = fotky.filter((_, i) => i !== idx);
@@ -142,7 +198,6 @@ const handleFotkyChange = async (e) => {
     setFotkyPreviews(newPreviews);
   };
 
-  // Publikování inzerátu
   const handleInzeratSubmit = async () => {
     if (!inzeratForm.title || !inzeratForm.price || !inzeratForm.city || !inzeratForm.kategorie || !inzeratForm.zvire) {
       setInzeratMsg("⚠️ Vyplň všechna povinná pole.");
@@ -150,21 +205,15 @@ const handleFotkyChange = async (e) => {
     }
     setInzeratSaving(true);
     setInzeratMsg("");
-
     try {
-      // Nahrát fotky do Supabase Storage
       const fotoUrls = [];
       for (const fotka of fotky) {
         const fileName = `${user.id}/${Date.now()}_${fotka.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("inzeraty")
-          .upload(fileName, fotka);
+        const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, fotka);
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
-
-      // Uložit inzerát do DB
       const { error: dbError } = await supabase.from("inzeraty").insert({
         title: inzeratForm.title,
         price: parseInt(inzeratForm.price),
@@ -178,11 +227,13 @@ const handleFotkyChange = async (e) => {
         seller_name: profile?.name || user.email,
       });
       if (dbError) throw dbError;
-
       setInzeratMsg("🎉 Inzerát byl zveřejněn!");
       setInzeratForm({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
       setFotky([]);
       setFotkyPreviews([]);
+      // Refresh moje inzeráty
+      const { data } = await supabase.from("inzeraty").select("*").eq("seller_id", user.id).order("created_at", { ascending: false });
+      if (data) setMojeInzeraty(data);
       setTimeout(() => { setInzeratMsg(""); setActiveTab("inzeraty"); }, 2000);
     } catch (err) {
       setInzeratMsg("❌ Chyba: " + err.message);
@@ -303,30 +354,34 @@ const handleFotkyChange = async (e) => {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {mojeInzeraty.length === 0 ? (
-  <div style={{ textAlign:"center", padding:"40px", color:"#8a9e92" }}>
-    <div style={{ fontSize:"2rem", marginBottom:12 }}>📋</div>
-    <p>Zatím žádné inzeráty.</p>
-  </div>
-) : mojeInzeraty.map(item => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer" }}
+                  <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
+                    <div style={{ fontSize: "2rem", marginBottom: 12 }}>📋</div>
+                    <p>Zatím žádné inzeráty.</p>
+                  </div>
+                ) : mojeInzeraty.map(item => (
+                  <div key={item.id}
+                    onClick={() => setSelectedInzerat(item)}
+                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer", transition: "background 0.15s" }}
                     onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
                     onMouseOut={e => e.currentTarget.style.background = "#fff"}
                   >
-                    <div style={{ flex: 1 }}><div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
-  {item.foto_urls && item.foto_urls.length > 0
-    ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-    : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
-</div>
+                    <div style={{ width: 56, height: 56, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
+                      {item.foto_urls && item.foto_urls.length > 0
+                        ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
+                    </div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
-                      <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>👁️ {item.views} zobrazení</div>
+                      <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>
+                        📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}
+                      </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>
-                      <span style={{ fontSize: "0.72rem", fontWeight: 600, padding: "2px 10px", borderRadius: 20, background: item.status === "aktivní" ? "#e8f5ef" : "#f3f4f6", color: item.status === "aktivní" ? "#2d6a4f" : "#6b7280" }}>{item.status}</span>
+                      <CondBadge cond={item.condition} />
                     </div>
                   </div>
                 ))}
-        
               </div>
             </div>
           )}
@@ -335,33 +390,18 @@ const handleFotkyChange = async (e) => {
           {activeTab === "pridat" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat inzerát</h2>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-                {/* FOTKY */}
                 <div>
                   <label style={labelStyle}>Fotky (max. 5) *</label>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                     {fotkyPreviews.map((src, i) => (
                       <div key={i} style={{ position: "relative", width: 90, height: 90 }}>
                         <img src={src} alt="" style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1.5px solid #ede8e0" }} />
-                        <button onClick={() => removeFotka(i)} style={{
-                          position: "absolute", top: -6, right: -6,
-                          width: 22, height: 22, borderRadius: "50%",
-                          background: "#b91c1c", color: "#fff", border: "none",
-                          cursor: "pointer", fontSize: "0.7rem", fontWeight: 700,
-                          display: "flex", alignItems: "center", justifyContent: "center"
-                        }}>✕</button>
+                        <button onClick={() => removeFotka(i)} style={{ position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%", background: "#b91c1c", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.7rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                       </div>
                     ))}
                     {fotky.length < 5 && (
-                      <label style={{
-                        width: 90, height: 90, borderRadius: 10,
-                        border: "2px dashed #b7d9c7", display: "flex",
-                        flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        cursor: "pointer", color: "#8a9e92", fontSize: "0.75rem",
-                        background: "#f7f4ef", gap: 4,
-                      }}>
+                      <label style={{ width: 90, height: 90, borderRadius: 10, border: "2px dashed #b7d9c7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8a9e92", fontSize: "0.75rem", background: "#f7f4ef", gap: 4 }}>
                         <span style={{ fontSize: "1.5rem" }}>📷</span>
                         Přidat
                         <input type="file" accept="image/*" multiple onChange={handleFotkyChange} style={{ display: "none" }} />
@@ -370,14 +410,10 @@ const handleFotkyChange = async (e) => {
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#8a9e92" }}>JPG, PNG, WEBP · Max. 5 MB na fotku</div>
                 </div>
-
-                {/* NÁZEV */}
                 <div>
                   <label style={labelStyle}>Název inzerátu *</label>
                   <input value={inzeratForm.title} onChange={e => setInzeratForm(f => ({ ...f, title: e.target.value }))} placeholder="Pelíšek pro psa, vel. M" style={inputStyle} />
                 </div>
-
-                {/* KATEGORIE + ZVÍŘE */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   <div>
                     <label style={labelStyle}>Kategorie *</label>
@@ -394,8 +430,6 @@ const handleFotkyChange = async (e) => {
                     </select>
                   </div>
                 </div>
-
-                {/* CENA + STAV + MĚSTO */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                   <div>
                     <label style={labelStyle}>Cena (Kč) *</label>
@@ -412,19 +446,15 @@ const handleFotkyChange = async (e) => {
                     <input value={inzeratForm.city} onChange={e => setInzeratForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" style={inputStyle} />
                   </div>
                 </div>
-
-                {/* POPIS */}
                 <div>
                   <label style={labelStyle}>Popis</label>
                   <textarea value={inzeratForm.desc} onChange={e => setInzeratForm(f => ({ ...f, desc: e.target.value }))} placeholder="Stav, rozměry, důvod prodeje, případné vady..." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} />
                 </div>
-
                 {inzeratMsg && (
                   <div style={{ background: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#880e4f" : "#1b5e20" }}>
                     {inzeratMsg}
                   </div>
                 )}
-
                 <button onClick={handleInzeratSubmit} disabled={inzeratSaving} style={{ background: inzeratSaving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: inzeratSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
                   {inzeratSaving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}
                 </button>
@@ -436,7 +466,7 @@ const handleFotkyChange = async (e) => {
           {activeTab === "prijmy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                {[{ label: "Celkové příjmy", value: "600 Kč", icon: "💰" }, { label: "Prodané položky", value: "1", icon: "📦" }, { label: "Aktivní inzeráty", value: "2", icon: "📋" }].map(({ label, value, icon }) => (
+                {[{ label: "Celkové příjmy", value: `${mojeInzeraty.reduce((s, i) => s + i.price, 0)} Kč`, icon: "💰" }, { label: "Moje inzeráty", value: mojeInzeraty.length, icon: "📋" }, { label: "Zvířata", value: new Set(mojeInzeraty.map(i => i.animal)).size, icon: "🐾" }].map(({ label, value, icon }) => (
                   <div key={label} style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
                     <div style={{ fontSize: "1.8rem", marginBottom: 8 }}>{icon}</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{value}</div>
@@ -504,6 +534,10 @@ const handleFotkyChange = async (e) => {
 
         </div>
       </div>
+
+      {selectedInzerat && (
+        <InzeratDetail item={selectedInzerat} onClose={() => setSelectedInzerat(null)} />
+      )}
     </div>
   );
 }
