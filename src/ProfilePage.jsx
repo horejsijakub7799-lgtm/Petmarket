@@ -126,15 +126,15 @@ export default function ProfilePage() {
       for (const fotka of fotky) {
         const fileName = `${user.id}/${Date.now()}_${fotka.name}`;
         const { error: uploadError } = await supabase.storage
-          .from("inzeraty")
+          .from("Inzeraty")
           .upload(fileName, fotka);
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+        const { data: urlData } = supabase.storage.from("Inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
 
       // Uložit inzerát do DB
-      const { error: dbError } = await supabase.from("inzeraty").insert({
+      const { error: dbError } = await supabase.from("Inzeraty").insert({
         title: inzeratForm.title,
         price: parseInt(inzeratForm.price),
         city: inzeratForm.city,
