@@ -215,11 +215,11 @@ function DetailModal({ item, onClose, onContact, onSave }) {
           {fotos && fotos.length > 1 && <>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
               style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)",
-                background:"rgba(255,255,255,0.85)", border:"none", borderRadius:"50%",
+                background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%",
                 width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>‹</button>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }}
               style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
-                background:"rgba(255,255,255,0.85)", border:"none", borderRadius:"50%",
+                background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%",
                 width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>›</button>
             <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", display:"flex", gap:5 }}>
               {fotos.map((_, i) => (
