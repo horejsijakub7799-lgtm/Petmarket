@@ -207,7 +207,10 @@ function DetailModal({ item, onClose, onContact, onSave }) {
         <div style={{ height:220, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0" }}>
-          {item.emoji}
+          {item.foto_urls && item.foto_urls.length > 0
+  ? <img src={item.foto_urls[0]} alt={item.title}
+      style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0, borderRadius:"22px 22px 0 0" }} />
+  : (item.emoji || "🐾")}
           <button onClick={onClose} style={{ position:"absolute", top:14, right:14,
             background:"rgba(255,255,255,0.9)", border:"none", borderRadius:"50%",
             width:38, height:38, cursor:"pointer", fontSize:"1.1rem", color:"var(--text-mid)",
@@ -225,8 +228,7 @@ function DetailModal({ item, onClose, onContact, onSave }) {
             {item.desc}
           </p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:24 }}>
-            {[`📍 ${item.city}`, `👤 ${item.seller}`, `🕐 Přidáno před ${item.time}`].map(tag => (
-              <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)",
+{[`📍 ${item.city}`, `👤 ${item.seller_name || item.seller || "Prodejce"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (              <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)",
                 borderRadius:20, padding:"5px 12px", fontSize:"0.78rem", color:"var(--text-mid)", fontWeight:500 }}>{tag}</span>
             ))}
           </div>
