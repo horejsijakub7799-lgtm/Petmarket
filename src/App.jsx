@@ -210,7 +210,7 @@ function DetailModal({ item, onClose, onContact, onSave }) {
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0", overflow:"hidden" }}>
           {fotos
-            ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"contain" }} />
             : (item.emoji || "🐾")}
           {fotos && fotos.length > 1 && <>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
