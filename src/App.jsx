@@ -167,11 +167,11 @@ function Card({ item, onOpen, onSave, delay }) {
     <div className="card" style={{ animationDelay:`${delay}ms` }} onClick={() => onOpen(item)}>
       <div style={{ height:150, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
         display:"flex", alignItems:"center", justifyContent:"center",
-        fontSize:"3.8rem", position:"relative" }}>
+        fontSize:"3.8rem", position:"relative", overflow:"hidden" }}>
         {item.foto_urls && item.foto_urls.length > 0
-  ? <img src={item.foto_urls[0]} alt={item.title}
-      style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
-  : (item.emoji || "🐾")}
+          ? <img src={item.foto_urls[0]} alt={item.title}
+              style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
+          : (item.emoji || "🐾")}
         <button onClick={e => { e.stopPropagation(); onSave(item.id); }}
           style={{ position:"absolute", top:10, right:10,
             background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)",
@@ -184,7 +184,7 @@ function Card({ item, onOpen, onSave, delay }) {
       </div>
       <div style={{ padding:"14px 16px 16px" }}>
         <div style={{ fontSize:"0.8rem", color:"var(--text-light)", marginBottom:5, fontWeight:500 }}>
-          📍 {item.city} · {item.time}
+          📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : item.time}
         </div>
         <div style={{ fontWeight:600, fontSize:"0.95rem", color:"var(--text)", lineHeight:1.35,
           marginBottom:10, minHeight:40 }}>{item.title}</div>
@@ -192,7 +192,7 @@ function Card({ item, onOpen, onSave, delay }) {
           <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>
             {item.price} Kč
           </span>
-          <CondBadge cond={item.cond} />
+          <CondBadge cond={item.cond || item.condition} />
         </div>
       </div>
     </div>
@@ -216,11 +216,11 @@ function DetailModal({ item, onClose, onContact, onSave }) {
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
               style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)",
                 background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%",
-                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>‹</button>
+                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700, color:"#fff" }}>‹</button>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }}
               style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
                 background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%",
-                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>›</button>
+                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700, color:"#fff" }}>›</button>
             <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", display:"flex", gap:5 }}>
               {fotos.map((_, i) => (
                 <div key={i} onClick={e => { e.stopPropagation(); setFotoIdx(i); }}
@@ -268,33 +268,88 @@ function DetailModal({ item, onClose, onContact, onSave }) {
 }
 
 function AddModal({ onClose, onAdd }) {
-  const [f, setF] = useState({ title:"", price:"", cat:"vybaveni", animal:"pes", cond:"dobrý", city:"", desc:"", emoji:"🐾" });
+  const { user, profile } = useAuth();
+  const [f, setF] = useState({ title:"", price:"", cat:"vybaveni", animal:"pes", cond:"dobrý", city:"", desc:"" });
+  const [fotky, setFotky] = useState([]);
+  const [fotkyPreviews, setFotkyPreviews] = useState([]);
+  const [saving, setSaving] = useState(false);
   const set = (k,v) => setF(p => ({...p,[k]:v}));
-  const EMOJIS = ["🛏️","🏠","🧥","🐟","🌴","🔗","🦴","📦","⚽","🐭","🎾","💊","🐠","🪮","🐾","🎀"];
-  const submit = () => {
-    if(!f.title.trim() || !f.price || !f.city.trim()) { alert("Vyplň prosím název, cenu a město."); return; }
-    onAdd({ ...f, id:Date.now(), price:parseInt(f.price), saved:false, seller:"Já", time:"právě teď" });
-    onClose();
+
+  const compressImage = (file) => new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 800;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; }
+      else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.75);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  const handleFotky = async (e) => {
+    const files = Array.from(e.target.files);
+    const compressed = await Promise.all(files.map(compressImage));
+    const newFotky = [...fotky, ...compressed].slice(0, 5);
+    setFotky(newFotky);
+    setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
   };
+
+  const submit = async () => {
+    if(!f.title.trim() || !f.price || !f.city.trim()) { alert("Vyplň prosím název, cenu a město."); return; }
+    if (!user) { alert("Musíš být přihlášen."); return; }
+    setSaving(true);
+    try {
+      const fotoUrls = [];
+      for (const fotka of fotky) {
+        const fileName = `${user.id}/${Date.now()}_${fotka.name}`;
+        const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, fotka);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+        fotoUrls.push(urlData.publicUrl);
+      }
+      const { error } = await supabase.from("inzeraty").insert({
+        title: f.title, price: parseInt(f.price), city: f.city,
+        description: f.desc, category: f.cat, animal: f.animal,
+        condition: f.cond, foto_urls: fotoUrls,
+        seller_id: user.id, seller_name: profile?.name || user.email,
+      });
+      if (error) throw error;
+      onAdd({ ...f, id: Date.now(), price: parseInt(f.price), foto_urls: fotoUrls });
+      onClose();
+    } catch(err) {
+      alert("Chyba: " + err.message);
+    }
+    setSaving(false);
+  };
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth:520 }} onClick={e => e.stopPropagation()}>
         <div style={{ padding:"22px 24px 0", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid var(--sand-dark)", paddingBottom:16 }}>
           <h2 style={{ fontSize:"1.35rem", color:"var(--text)" }}>Přidat inzerát</h2>
-          <button onClick={onClose} style={{ background:"var(--sand)", border:"none", borderRadius:"50%",
-            width:36, height:36, cursor:"pointer", fontSize:"1rem", color:"var(--text-mid)", fontWeight:700 }}>✕</button>
+          <button onClick={onClose} style={{ background:"var(--sand)", border:"none", borderRadius:"50%", width:36, height:36, cursor:"pointer", fontSize:"1rem", color:"var(--text-mid)", fontWeight:700 }}>✕</button>
         </div>
         <div style={{ padding:"20px 24px 26px", display:"flex", flexDirection:"column", gap:16 }}>
           <div>
-            <label className="label">Ikona produktu</label>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:7 }}>
-              {EMOJIS.map(e => (
-                <button key={e} onClick={() => set("emoji",e)} style={{
-                  width:42, height:42, borderRadius:10, fontSize:"1.3rem",
-                  border: f.emoji===e ? "2px solid var(--green)" : "1.5px solid var(--sand-dark)",
-                  background: f.emoji===e ? "var(--green-light)" : "var(--sand)",
-                  cursor:"pointer", transition:"all 0.15s" }}>{e}</button>
+            <label className="label">Fotky (max. 5)</label>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:8 }}>
+              {fotkyPreviews.map((src, i) => (
+                <div key={i} style={{ position:"relative", width:80, height:80 }}>
+                  <img src={src} style={{ width:80, height:80, objectFit:"cover", borderRadius:10, border:"1.5px solid var(--sand-dark)" }} />
+                  <button onClick={() => { const nf = fotky.filter((_,j)=>j!==i); setFotky(nf); setFotkyPreviews(nf.map(f=>URL.createObjectURL(f))); }}
+                    style={{ position:"absolute", top:-6, right:-6, width:20, height:20, borderRadius:"50%", background:"#b91c1c", color:"#fff", border:"none", cursor:"pointer", fontSize:"0.7rem", fontWeight:700 }}>✕</button>
+                </div>
               ))}
+              {fotky.length < 5 && (
+                <label style={{ width:80, height:80, borderRadius:10, border:"2px dashed var(--sand-dark)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"var(--text-light)", fontSize:"0.75rem", background:"var(--sand)", gap:4 }}>
+                  <span style={{ fontSize:"1.5rem" }}>📷</span>Přidat
+                  <input type="file" accept="image/*" multiple onChange={handleFotky} style={{ display:"none" }} />
+                </label>
+              )}
             </div>
           </div>
           <div>
@@ -313,8 +368,8 @@ function AddModal({ onClose, onAdd }) {
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
             {[
-              { label:"Kategorie", key:"cat", opts:[["vybaveni","Vybavení"],["krmivo","Krmivo"],["obleceni","Oblečení"]] },
-              { label:"Zvíře", key:"animal", opts:[["pes","Pes"],["kočka","Kočka"],["hlodavec","Hlodavec"],["ryba","Ryba"]] },
+              { label:"Kategorie", key:"cat", opts:[["vybaveni","Vybavení"],["krmivo","Krmivo & pamlsky"],["obleceni","Oblečení"],["hracky","Hračky"],["preprava","Přeprava"],["pece","Péče & hygiena"]] },
+              { label:"Zvíře", key:"animal", opts:[["pes","Pes"],["kočka","Kočka"],["hlodavec","Hlodavec"],["ryba","Ryba"],["ptak","Pták"],["jine","Jiné"]] },
               { label:"Stav", key:"cond", opts:[["nový","Nový"],["jako nový","Jako nový"],["dobrý","Dobrý"],["použitý","Použitý"]] },
             ].map(({label,key,opts}) => (
               <div key={key}>
@@ -327,12 +382,10 @@ function AddModal({ onClose, onAdd }) {
           </div>
           <div>
             <label className="label">Popis</label>
-            <textarea className="input-field" style={{ minHeight:80, resize:"vertical" }}
-              value={f.desc} onChange={e=>set("desc",e.target.value)}
-              placeholder="Stav, rozměry, důvod prodeje..." />
+            <textarea className="input-field" style={{ minHeight:80, resize:"vertical" }} value={f.desc} onChange={e=>set("desc",e.target.value)} placeholder="Stav, rozměry, důvod prodeje..." />
           </div>
-          <button className="btn-primary" style={{ width:"100%", padding:"14px", fontSize:"1rem" }} onClick={submit}>
-            ✓ Zveřejnit inzerát
+          <button className="btn-primary" style={{ width:"100%", padding:"14px", fontSize:"1rem" }} onClick={submit} disabled={saving}>
+            {saving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}
           </button>
         </div>
       </div>
@@ -341,8 +394,8 @@ function AddModal({ onClose, onAdd }) {
 }
 
 export default function PetMarket() {
-const [items, setItems] = useState([]);
-const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState("vse");
   const [animal, setAnimal] = useState("vse");
   const [search, setSearch] = useState("");
@@ -354,21 +407,23 @@ const [loading, setLoading] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { user, profile, signOut } = useAuth();
-useEffect(() => {
-  const fetchInzeraty = async () => {
-    const { data, error } = await supabase
-      .from("inzeraty")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error || data.length === 0) {
-      setItems(LISTINGS);
-    } else {
-      setItems(data);
-    }
-    setLoading(false);
-  };
-  fetchInzeraty();
-}, []);
+
+  useEffect(() => {
+    const fetchInzeraty = async () => {
+      const { data, error } = await supabase
+        .from("inzeraty")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error || data.length === 0) {
+        setItems(LISTINGS);
+      } else {
+        setItems(data);
+      }
+      setLoading(false);
+    };
+    fetchInzeraty();
+  }, []);
+
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const handleSave = id => {
@@ -379,7 +434,7 @@ useEffect(() => {
   };
 
   const handleContact = item => {
-    toast_(`Zpráva odeslána prodejci ${item.seller}!`);
+    toast_(`Zpráva odeslána prodejci ${item.seller_name || item.seller || ""}!`);
     setSelected(null);
   };
 
@@ -396,21 +451,16 @@ useEffect(() => {
     .sort((a,b) => sort==="price_asc" ? a.price-b.price : sort==="price_desc" ? b.price-a.price : b.id-a.id);
 
   const savedCount = items.filter(i => i.saved).length;
-
-  // Jméno uživatele pro navbar
   const userName = profile?.full_name || profile?.name || user?.email?.split("@")[0] || "Účet";
 
   return (
     <div style={{ minHeight:"100vh", background:"var(--sand)" }}>
       <style>{CSS}</style>
 
-      {/* ── NAVBAR ── */}
       <nav style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)",
         position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 12px rgba(44,80,58,0.07)" }}>
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"0 24px",
           display:"flex", alignItems:"center", height:68, gap:18 }}>
-
-          {/* Logo */}
           <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginRight:4 }}>
             <div style={{ width:42, height:42, borderRadius:12,
               background:"var(--green)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"1.3rem" }}>
@@ -425,16 +475,12 @@ useEffect(() => {
               </div>
             </div>
           </div>
-
-          {/* Search */}
           <div style={{ flex:1, position:"relative" }}>
             <span style={{ position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", fontSize:"1rem", opacity:0.45 }}>🔍</span>
             <input className="input-field" value={search} onChange={e=>setSearch(e.target.value)}
               style={{ paddingLeft:38, borderRadius:30, background:"var(--sand)" }}
               placeholder="Hledat pelíšek, granule, klec…" />
           </div>
-
-          {/* Actions */}
           <div style={{ display:"flex", gap:10, alignItems:"center", flexShrink:0 }}>
             {savedCount > 0 && (
               <div style={{ background:"var(--green-light)", color:"var(--green)", borderRadius:20,
@@ -442,35 +488,24 @@ useEffect(() => {
                 ♥ {savedCount}
               </div>
             )}
-
-            {/* ── TOTO JE OPRAVENÉ TLAČÍTKO ── */}
             {user ? (
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <button
-                  className="btn-secondary"
-                  style={{ padding:"8px 16px" }}
-                  onClick={() => window.location.href = "/profil"}
-                >
+                <button className="btn-secondary" style={{ padding:"8px 16px" }}
+                  onClick={() => window.location.href = "/profil"}>
                   👤 {userName}
                 </button>
-                <button
-                  className="btn-secondary"
+                <button className="btn-secondary"
                   style={{ padding:"8px 14px", fontSize:"0.8rem", borderColor:"var(--sand-dark)", color:"var(--text-mid)" }}
-                  onClick={signOut}
-                >
+                  onClick={signOut}>
                   Odhlásit
                 </button>
               </div>
             ) : (
-              <button
-                className="btn-secondary"
-                style={{ padding:"8px 16px" }}
-                onClick={() => setShowAuth(true)}
-              >
+              <button className="btn-secondary" style={{ padding:"8px 16px" }}
+                onClick={() => setShowAuth(true)}>
                 Přihlásit se
               </button>
             )}
-
             <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>
               + Prodat
             </button>
@@ -478,13 +513,12 @@ useEffect(() => {
         </div>
       </nav>
 
-      {/* ── HERO STRIP ── */}
       <div style={{ background:"linear-gradient(105deg, var(--green) 0%, #3a7d60 100%)", padding:"36px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
           <h1 style={{ color:"var(--white)", fontSize:"clamp(1.5rem,3vw,2.2rem)", marginBottom:8, letterSpacing:"-0.02em" }}>
             Vše pro tvého mazlíčka — z druhé ruky
           </h1>
-          <p style={{ color:"rgba(231,160,160,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
+          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
             Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.
           </p>
           <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
@@ -499,7 +533,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ── FILTERS ── */}
       <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"16px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
@@ -540,7 +573,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ── GRID ── */}
       <main style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 48px" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"70px 20px", color:"var(--text-light)" }}>
@@ -562,7 +594,6 @@ useEffect(() => {
         )}
       </main>
 
-      {/* ── MODALS ── */}
       {selected && (
         <DetailModal item={selected} onClose={() => setSelected(null)}
           onContact={handleContact} onSave={handleSave} />
@@ -577,7 +608,6 @@ useEffect(() => {
         <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />
       )}
 
-      {/* ── TOAST ── */}
       {toast && (
         <div style={{ position:"fixed", bottom:28, left:"50%",
           transform:"translateX(-50%)", background:"var(--text)", color:"var(--white)",
@@ -588,7 +618,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* ── FOOTER ── */}
       <footer style={{ background:"var(--text)", color:"rgba(255,255,255,0.5)",
         padding:"24px", textAlign:"center", fontSize:"0.8rem" }}>
         <span style={{ fontFamily:"'DM Serif Display',serif", color:"rgba(255,255,255,0.8)", fontSize:"1rem" }}>
