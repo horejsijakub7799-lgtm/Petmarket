@@ -105,17 +105,35 @@ useEffect(() => {
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   // Nahrání fotek
-  const handleFotkyChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (fotky.length + files.length > 5) {
-      setInzeratMsg("⚠️ Maximálně 5 fotek.");
-      return;
-    }
-    const newFotky = [...fotky, ...files].slice(0, 5);
-    setFotky(newFotky);
-    const previews = newFotky.map(f => URL.createObjectURL(f));
-    setFotkyPreviews(previews);
-  };
+  const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const maxSize = 800;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; }
+      else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.75);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+const handleFotkyChange = async (e) => {
+  const files = Array.from(e.target.files);
+  if (fotky.length + files.length > 5) {
+    setInzeratMsg("⚠️ Maximálně 5 fotek.");
+    return;
+  }
+  const compressed = await Promise.all(files.map(compressImage));
+  const newFotky = [...fotky, ...compressed].slice(0, 5);
+  setFotky(newFotky);
+  setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
+};
+
 
   const removeFotka = (idx) => {
     const newFotky = fotky.filter((_, i) => i !== idx);
