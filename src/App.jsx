@@ -168,7 +168,10 @@ function Card({ item, onOpen, onSave, delay }) {
       <div style={{ height:150, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
         display:"flex", alignItems:"center", justifyContent:"center",
         fontSize:"3.8rem", position:"relative" }}>
-        {item.emoji}
+        {item.foto_urls && item.foto_urls.length > 0
+  ? <img src={item.foto_urls[0]} alt={item.title}
+      style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
+  : (item.emoji || "🐾")}
         <button onClick={e => { e.stopPropagation(); onSave(item.id); }}
           style={{ position:"absolute", top:10, right:10,
             background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)",
