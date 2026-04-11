@@ -200,17 +200,35 @@ function Card({ item, onOpen, onSave, delay }) {
 }
 
 function DetailModal({ item, onClose, onContact, onSave }) {
+  const [fotoIdx, setFotoIdx] = useState(0);
   if (!item) return null;
+  const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div style={{ height:220, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0" }}>
-          {item.foto_urls && item.foto_urls.length > 0
-  ? <img src={item.foto_urls[0]} alt={item.title}
-      style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0, borderRadius:"22px 22px 0 0" }} />
-  : (item.emoji || "🐾")}
+          fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0", overflow:"hidden" }}>
+          {fotos
+            ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+            : (item.emoji || "🐾")}
+          {fotos && fotos.length > 1 && <>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
+              style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)",
+                background:"rgba(255,255,255,0.85)", border:"none", borderRadius:"50%",
+                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>‹</button>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }}
+              style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)",
+                background:"rgba(255,255,255,0.85)", border:"none", borderRadius:"50%",
+                width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700 }}>›</button>
+            <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", display:"flex", gap:5 }}>
+              {fotos.map((_, i) => (
+                <div key={i} onClick={e => { e.stopPropagation(); setFotoIdx(i); }}
+                  style={{ width:7, height:7, borderRadius:"50%", cursor:"pointer",
+                    background: i === fotoIdx ? "#fff" : "rgba(255,255,255,0.5)" }} />
+              ))}
+            </div>
+          </>}
           <button onClick={onClose} style={{ position:"absolute", top:14, right:14,
             background:"rgba(255,255,255,0.9)", border:"none", borderRadius:"50%",
             width:38, height:38, cursor:"pointer", fontSize:"1.1rem", color:"var(--text-mid)",
@@ -219,16 +237,17 @@ function DetailModal({ item, onClose, onContact, onSave }) {
         <div style={{ padding:"24px 26px 28px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8, gap:12 }}>
             <h2 style={{ fontSize:"1.25rem", color:"var(--text)", lineHeight:1.3 }}>{item.title}</h2>
-            <CondBadge cond={item.cond} />
+            <CondBadge cond={item.cond || item.condition} />
           </div>
           <div style={{ fontSize:"2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif", marginBottom:14 }}>
             {item.price} Kč
           </div>
           <p style={{ color:"var(--text-mid)", fontSize:"0.92rem", lineHeight:1.65, marginBottom:18 }}>
-            {item.desc}
+            {item.desc || item.description}
           </p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:24 }}>
-{[`📍 ${item.city}`, `👤 ${item.seller_name || item.seller || "Prodejce"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (              <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)",
+            {[`📍 ${item.city}`, `👤 ${item.seller_name || item.seller || "Prodejce"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (
+              <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)",
                 borderRadius:20, padding:"5px 12px", fontSize:"0.78rem", color:"var(--text-mid)", fontWeight:500 }}>{tag}</span>
             ))}
           </div>
