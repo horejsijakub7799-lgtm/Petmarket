@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
@@ -56,7 +56,20 @@ export default function ProfilePage() {
   const [fotkyPreviews, setFotkyPreviews] = useState([]); // preview URL
   const [inzeratSaving, setInzeratSaving] = useState(false);
   const [inzeratMsg, setInzeratMsg] = useState("");
+const [mojeInzeraty, setMojeInzeraty] = useState([]);
 
+useEffect(() => {
+  if (!user) return;
+  const fetchMoje = async () => {
+    const { data, error } = await supabase
+      .from("inzeraty")
+      .select("*")
+      .eq("seller_id", user.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setMojeInzeraty(data);
+  };
+  fetchMoje();
+}, [user]);
   const mockInzeraty = [
     { id: 1, title: "Pelíšek M/L", price: 340, status: "aktivní", views: 45, emoji: "🛏️" },
     { id: 2, title: "Vodítko kožené", price: 115, status: "aktivní", views: 23, emoji: "🔗" },
@@ -271,7 +284,12 @@ export default function ProfilePage() {
                 <button onClick={() => setActiveTab("pridat")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat</button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {mockInzeraty.map(item => (
+                {mojeInzeraty.length === 0 ? (
+  <div style={{ textAlign:"center", padding:"40px", color:"#8a9e92" }}>
+    <div style={{ fontSize:"2rem", marginBottom:12 }}>📋</div>
+    <p>Zatím žádné inzeráty.</p>
+  </div>
+) : mojeInzeraty.map(item => (
                   <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer" }}
                     onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
                     onMouseOut={e => e.currentTarget.style.background = "#fff"}
@@ -287,6 +305,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 ))}
+        
               </div>
             </div>
           )}
