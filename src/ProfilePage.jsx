@@ -312,8 +312,11 @@ const handleFotkyChange = async (e) => {
                     onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
                     onMouseOut={e => e.currentTarget.style.background = "#fff"}
                   >
-                    <div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>{item.emoji}</div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1 }}><div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
+  {item.foto_urls && item.foto_urls.length > 0
+    ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
+</div>
                       <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
                       <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>👁️ {item.views} zobrazení</div>
                     </div>
