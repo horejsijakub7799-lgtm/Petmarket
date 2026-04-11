@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
 import { useAuth } from "./useAuth";
 import AuthModal from "./AuthModal";
 import ProfilePage from "./ProfilePage";
@@ -316,7 +317,8 @@ function AddModal({ onClose, onAdd }) {
 }
 
 export default function PetMarket() {
-  const [items, setItems] = useState(LISTINGS);
+const [items, setItems] = useState([]);
+const [loading, setLoading] = useState(true);
   const [cat, setCat] = useState("vse");
   const [animal, setAnimal] = useState("vse");
   const [search, setSearch] = useState("");
@@ -328,7 +330,21 @@ export default function PetMarket() {
   const [showProfile, setShowProfile] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const { user, profile, signOut } = useAuth();
-
+useEffect(() => {
+  const fetchInzeraty = async () => {
+    const { data, error } = await supabase
+      .from("inzeraty")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error || data.length === 0) {
+      setItems(LISTINGS);
+    } else {
+      setItems(data);
+    }
+    setLoading(false);
+  };
+  fetchInzeraty();
+}, []);
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const handleSave = id => {
