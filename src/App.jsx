@@ -341,8 +341,9 @@ export default function PetMarket() {
   useEffect(() => {
     const fetchInzeraty = async () => {
       const { data, error } = await supabase.from("inzeraty").select("*").order("created_at", { ascending: false });
-      if (error || data.length === 0) setItems(LISTINGS);
-      else setItems(data);
+      if (error) setItems(LISTINGS);
+else setItems(data.length > 0 ? data : LISTINGS);
+      
       setLoading(false);
     };
     fetchInzeraty();
