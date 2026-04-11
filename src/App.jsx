@@ -365,8 +365,8 @@ useEffect(() => {
   };
 
   const filtered = items
-    .filter(i => cat === "vse" || i.cat === cat)
-    .filter(i => animal === "vse" || i.animal === animal)
+    .filter(i => cat === "vse" || (i.cat || i.category || "").toLowerCase().includes(cat.toLowerCase()) || cat.toLowerCase().includes((i.cat || i.category || "").toLowerCase()))
+    .filter(i => animal === "vse" || (i.animal || "").toLowerCase() === animal.toLowerCase())
     .filter(i => i.price <= maxPrice)
     .filter(i => !search || i.title.toLowerCase().includes(search.toLowerCase()) || i.city.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b) => sort==="price_asc" ? a.price-b.price : sort==="price_desc" ? b.price-a.price : b.id-a.id);
