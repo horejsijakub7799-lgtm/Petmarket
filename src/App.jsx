@@ -206,7 +206,7 @@ function DetailModal({ item, onClose, onContact, onSave }) {
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div style={{ height:220, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
+        <div style={{ height:400, background:"linear-gradient(145deg, var(--green-pale), var(--sand))",
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0", overflow:"hidden" }}>
           {fotos
