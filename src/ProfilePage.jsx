@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
@@ -19,22 +19,124 @@ const STAVY = ["Nový", "Jako nový", "Dobrý", "Použitý"];
 const MONTHS = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čer", "Čec", "Srp", "Zář", "Říj", "Lis", "Pro"];
 
 const COND_COLORS = {
-  "nový": { bg: "#e3f2fd", color: "#0d47a1" },
-  "Nový": { bg: "#e3f2fd", color: "#0d47a1" },
-  "jako nový": { bg: "#e8f5e9", color: "#1b5e20" },
-  "Jako nový": { bg: "#e8f5e9", color: "#1b5e20" },
-  "dobrý": { bg: "#fff8e1", color: "#e65100" },
-  "Dobrý": { bg: "#fff8e1", color: "#e65100" },
-  "použitý": { bg: "#fce4ec", color: "#880e4f" },
-  "Použitý": { bg: "#fce4ec", color: "#880e4f" },
+  "nový": { bg: "#e3f2fd", color: "#0d47a1" }, "Nový": { bg: "#e3f2fd", color: "#0d47a1" },
+  "jako nový": { bg: "#e8f5e9", color: "#1b5e20" }, "Jako nový": { bg: "#e8f5e9", color: "#1b5e20" },
+  "dobrý": { bg: "#fff8e1", color: "#e65100" }, "Dobrý": { bg: "#fff8e1", color: "#e65100" },
+  "použitý": { bg: "#fce4ec", color: "#880e4f" }, "Použitý": { bg: "#fce4ec", color: "#880e4f" },
 };
 
 function CondBadge({ cond }) {
   const s = COND_COLORS[cond] || { bg: "#f5f5f5", color: "#555" };
+  return <span style={{ background: s.bg, color: s.color, fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{cond}</span>;
+}
+
+function filterMessage(text) {
+  const patterns = [
+    /\b[\w.-]+@[\w.-]+\.\w{2,}\b/gi,
+    /(\+420|00420)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}/g,
+    /\b\d{9,}\b/g,
+    /https?:\/\/[^\s]+/gi,
+    /www\.[^\s]+/gi,
+    /instagram|facebook|whatsapp|telegram|signal|viber|skype/gi,
+    /ig:|fb:|wa:|tg:/gi,
+  ];
+  let filtered = text;
+  patterns.forEach(p => { filtered = filtered.replace(p, "***"); });
+  return filtered;
+}
+
+// Inbox konverzace
+function InboxChat({ conv, user, onClose }) {
+  const { profile } = useAuth();
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [warning, setWarning] = useState("");
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    fetchMessages();
+    const channel = supabase
+      .channel("inbox-" + conv.inzerat_id + "-" + user.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `inzerat_id=eq.${conv.inzerat_id}` }, (payload) => {
+        const msg = payload.new;
+        if (msg.sender_id === user.id || msg.receiver_id === user.id) {
+          setMessages(prev => [...prev, msg]);
+        }
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [conv]);
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const fetchMessages = async () => {
+    const { data } = await supabase.from("messages").select("*")
+      .eq("inzerat_id", conv.inzerat_id)
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("created_at", { ascending: true });
+    if (data) setMessages(data);
+  };
+
+  const sendMessage = async () => {
+    if (!text.trim()) return;
+    const filtered = filterMessage(text.trim());
+    if (filtered !== text.trim()) { setWarning("⚠️ Zpráva obsahuje kontaktní údaje."); return; }
+
+    const receiverId = conv.other_user_id;
+    if (!receiverId) return;
+
+    setSending(true);
+    const { data, error } = await supabase.from("messages").insert({
+      inzerat_id: conv.inzerat_id,
+      sender_id: user.id,
+      receiver_id: receiverId,
+      sender_name: profile?.name || user.email?.split("@")[0],
+      content: filtered,
+    }).select().single();
+    setSending(false);
+    if (!error && data) { setMessages(prev => [...prev, data]); setText(""); setWarning(""); }
+  };
+
+  const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+
+  const inputStyle = { flex: 1, border: "1.5px solid #ede8e0", borderRadius: 12, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", resize: "none", height: 44, lineHeight: 1.4, background: "#f7f4ef", color: "#1c2b22" };
+
   return (
-    <span style={{ background: s.bg, color: s.color, fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-      {cond}
-    </span>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden" }}>
+      <div style={{ padding: "16px 20px", borderBottom: "1px solid #ede8e0", display: "flex", alignItems: "center", gap: 12 }}>
+        <button onClick={onClose} style={{ background: "#f7f4ef", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
+        <div>
+          <div style={{ fontWeight: 600, color: "#1c2b22", fontSize: "0.95rem" }}>{conv.inzerat_title}</div>
+          <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>S uživatelem: {conv.other_user_name}</div>
+        </div>
+      </div>
+      <div style={{ padding: "6px 20px", background: "#f2faf6", borderBottom: "1px solid #ede8e0", fontSize: "0.72rem", color: "#2d6a4f" }}>
+        🔒 Nesdílej kontaktní údaje, emaily ani telefonní čísla.
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {messages.map(msg => {
+          const isMe = msg.sender_id === user.id;
+          return (
+            <div key={msg.id} style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start" }}>
+              <div style={{ maxWidth: "75%", background: isMe ? "#2d6a4f" : "#f7f4ef", color: isMe ? "#fff" : "#1c2b22", borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "10px 14px", fontSize: "0.9rem", lineHeight: 1.5 }}>
+                {!isMe && <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2d6a4f", marginBottom: 4 }}>{msg.sender_name}</div>}
+                <div>{msg.content}</div>
+                <div style={{ fontSize: "0.65rem", color: isMe ? "rgba(255,255,255,0.6)" : "#8a9e92", marginTop: 4, textAlign: "right" }}>
+                  {new Date(msg.created_at).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+      {warning && <div style={{ padding: "8px 20px", background: "#fce4ec", fontSize: "0.8rem", color: "#880e4f" }}>{warning}</div>}
+      <div style={{ padding: "12px 20px", borderTop: "1px solid #ede8e0", display: "flex", gap: 10 }}>
+        <textarea value={text} onChange={e => { setText(e.target.value); setWarning(""); }} onKeyDown={handleKey} placeholder="Napiš zprávu... (Enter = odeslat)" style={inputStyle} />
+        <button onClick={sendMessage} disabled={sending || !text.trim()} style={{ background: sending || !text.trim() ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 12, padding: "0 18px", cursor: "pointer", fontSize: "1.1rem" }}>➤</button>
+      </div>
+    </div>
   );
 }
 
@@ -43,170 +145,89 @@ function InzeratDetail({ item, onClose, onUpdated }) {
   const [editing, setEditing] = useState(false);
   const [showSleva, setShowSleva] = useState(false);
   const [slevaPercent, setSlevaPercent] = useState(item.discount_percent || "");
-  const [form, setForm] = useState({
-    title: item.title || "",
-    price: item.price || "",
-    city: item.city || "",
-    description: item.description || "",
-    category: item.category || "",
-    animal: item.animal || "",
-    condition: item.condition || "Dobrý",
-  });
+  const [form, setForm] = useState({ title: item.title || "", price: item.price || "", city: item.city || "", description: item.description || "", category: item.category || "", animal: item.animal || "", condition: item.condition || "Dobrý" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
-  const discountedPrice = item.discount_percent
-    ? Math.round(item.price * (1 - item.discount_percent / 100))
-    : null;
+  const discountedPrice = item.discount_percent ? Math.round(item.price * (1 - item.discount_percent / 100)) : null;
 
-  const inputStyle = {
-    width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10,
-    padding: "10px 14px", fontSize: "0.9rem", outline: "none",
-    fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22"
-  };
-  const labelStyle = {
-    fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92",
-    textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6
-  };
+  const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
+  const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from("inzeraty").update({
-      title: form.title,
-      price: parseInt(form.price),
-      city: form.city,
-      description: form.description,
-      category: form.category,
-      animal: form.animal,
-      condition: form.condition,
-    }).eq("id", item.id);
+    const { error } = await supabase.from("inzeraty").update({ title: form.title, price: parseInt(form.price), city: form.city, description: form.description, category: form.category, animal: form.animal, condition: form.condition }).eq("id", item.id);
     setSaving(false);
-    if (error) { setMsg("❌ Chyba při ukládání."); return; }
-    setMsg("✅ Uloženo!");
-    setEditing(false);
-    onUpdated();
+    if (error) { setMsg("❌ Chyba."); return; }
+    setMsg("✅ Uloženo!"); setEditing(false); onUpdated();
     setTimeout(() => setMsg(""), 2000);
   };
 
   const handleSleva = async () => {
     const pct = parseInt(slevaPercent);
-    if (!pct || pct < 1 || pct > 90) { setMsg("⚠️ Zadej slevu mezi 1–90 %."); return; }
+    if (!pct || pct < 1 || pct > 90) { setMsg("⚠️ Zadej slevu 1–90 %."); return; }
     setSaving(true);
-    const { error } = await supabase.from("inzeraty").update({ discount_percent: pct }).eq("id", item.id);
-    setSaving(false);
-    if (error) { setMsg("❌ Chyba."); return; }
-    setMsg(`✅ Sleva ${pct} % přidána!`);
-    setShowSleva(false);
-    onUpdated();
+    await supabase.from("inzeraty").update({ discount_percent: pct }).eq("id", item.id);
+    setSaving(false); setMsg(`✅ Sleva ${pct}% přidána!`); setShowSleva(false); onUpdated();
     setTimeout(() => setMsg(""), 2000);
   };
 
   const handleRemoveSleva = async () => {
     setSaving(true);
     await supabase.from("inzeraty").update({ discount_percent: null }).eq("id", item.id);
-    setSaving(false);
-    setMsg("✅ Sleva odebrána.");
-    onUpdated();
+    setSaving(false); setMsg("✅ Sleva odebrána."); onUpdated();
     setTimeout(() => setMsg(""), 2000);
   };
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, maxWidth: 520, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(44,80,58,0.14)" }}>
-
         <div style={{ height: 280, background: "linear-gradient(145deg, #f2faf6, #f7f4ef)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
-          {fotos
-            ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            : <span style={{ fontSize: "5rem" }}>🐾</span>}
+          {fotos ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: "5rem" }}>🐾</span>}
           {fotos && fotos.length > 1 && <>
-            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }}
-              style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>‹</button>
-            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }}
-              style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>›</button>
-            <div style={{ position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5 }}>
-              {fotos.map((_, i) => (
-                <div key={i} onClick={e => { e.stopPropagation(); setFotoIdx(i); }}
-                  style={{ width: 7, height: 7, borderRadius: "50%", cursor: "pointer", background: i === fotoIdx ? "#fff" : "rgba(255,255,255,0.5)" }} />
-              ))}
-            </div>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>‹</button>
+            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>›</button>
           </>}
-          {item.discount_percent && (
-            <div style={{ position: "absolute", top: 14, left: 14, background: "#e07b39", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: "0.85rem", fontWeight: 700 }}>
-              -{item.discount_percent} %
-            </div>
-          )}
+          {item.discount_percent && <div style={{ position: "absolute", top: 14, left: 14, background: "#e07b39", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: "0.85rem", fontWeight: 700 }}>-{item.discount_percent}%</div>}
           <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "50%", width: 38, height: 38, cursor: "pointer", fontSize: "1.1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
-
         <div style={{ padding: "24px 26px 28px" }}>
           {!editing ? (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 12 }}>
-                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.25rem", color: "#1c2b22", lineHeight: 1.3 }}>{item.title}</h2>
-                <CondBadge cond={item.condition || item.cond} />
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.25rem", color: "#1c2b22" }}>{item.title}</h2>
+                <CondBadge cond={item.condition} />
               </div>
-
               <div style={{ marginBottom: 14 }}>
                 {discountedPrice ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: "2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{discountedPrice} Kč</span>
                     <span style={{ fontSize: "1rem", color: "#8a9e92", textDecoration: "line-through" }}>{item.price} Kč</span>
-                    <span style={{ background: "#fdf0e6", color: "#e07b39", borderRadius: 20, padding: "2px 10px", fontSize: "0.8rem", fontWeight: 700 }}>-{item.discount_percent} %</span>
+                    <span style={{ background: "#fdf0e6", color: "#e07b39", borderRadius: 20, padding: "2px 10px", fontSize: "0.8rem", fontWeight: 700 }}>-{item.discount_percent}%</span>
                   </div>
-                ) : (
-                  <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{item.price} Kč</div>
-                )}
+                ) : <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{item.price} Kč</div>}
               </div>
-
-              {item.description && (
-                <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.65, marginBottom: 18 }}>{item.description}</p>
-              )}
-
+              {item.description && <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.65, marginBottom: 18 }}>{item.description}</p>}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
                 {[`📍 ${item.city}`, `🏷️ ${item.category || "—"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (
                   <span key={tag} style={{ background: "#f7f4ef", border: "1px solid #ede8e0", borderRadius: 20, padding: "5px 12px", fontSize: "0.78rem", color: "#4a5e52", fontWeight: 500 }}>{tag}</span>
                 ))}
               </div>
-
               {msg && <div style={{ marginBottom: 12, fontSize: "0.85rem", color: msg.includes("❌") || msg.includes("⚠️") ? "#b91c1c" : "#166534" }}>{msg}</div>}
-
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button onClick={() => setEditing(true)}
-                  style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                  ✏️ Upravit inzerát
-                </button>
-                <button onClick={() => setShowSleva(!showSleva)}
-                  style={{ flex: 1, background: "#fff", color: "#e07b39", border: "2px solid #e07b39", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                  🏷️ {item.discount_percent ? "Upravit slevu" : "Přidat slevu"}
-                </button>
+                <button onClick={() => setEditing(true)} style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✏️ Upravit</button>
+                <button onClick={() => setShowSleva(!showSleva)} style={{ flex: 1, background: "#fff", color: "#e07b39", border: "2px solid #e07b39", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🏷️ {item.discount_percent ? "Upravit slevu" : "Přidat slevu"}</button>
               </div>
-
-              {item.discount_percent && (
-                <button onClick={handleRemoveSleva} disabled={saving}
-                  style={{ marginTop: 8, width: "100%", background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "9px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                  Odebrat slevu
-                </button>
-              )}
-
+              {item.discount_percent && <button onClick={handleRemoveSleva} disabled={saving} style={{ marginTop: 8, width: "100%", background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "9px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Odebrat slevu</button>}
               {showSleva && (
                 <div style={{ marginTop: 16, background: "#fdf0e6", borderRadius: 12, padding: "16px" }}>
                   <label style={labelStyle}>Sleva v % (1–90)</label>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <input type="number" min="1" max="90" value={slevaPercent}
-                      onChange={e => setSlevaPercent(e.target.value)}
-                      placeholder="Např. 20"
-                      style={{ ...inputStyle, flex: 1 }} />
-                    <button onClick={handleSleva} disabled={saving}
-                      style={{ background: "#e07b39", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                      {saving ? "..." : "Použít"}
-                    </button>
+                    <input type="number" min="1" max="90" value={slevaPercent} onChange={e => setSlevaPercent(e.target.value)} placeholder="Např. 20" style={{ ...inputStyle, flex: 1 }} />
+                    <button onClick={handleSleva} disabled={saving} style={{ background: "#e07b39", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "..." : "Použít"}</button>
                   </div>
-                  {slevaPercent && item.price && (
-                    <div style={{ marginTop: 8, fontSize: "0.85rem", color: "#e07b39", fontWeight: 600 }}>
-                      Nová cena: {Math.round(item.price * (1 - parseInt(slevaPercent || 0) / 100))} Kč
-                    </div>
-                  )}
+                  {slevaPercent && item.price && <div style={{ marginTop: 8, fontSize: "0.85rem", color: "#e07b39", fontWeight: 600 }}>Nová cena: {Math.round(item.price * (1 - parseInt(slevaPercent || 0) / 100))} Kč</div>}
                 </div>
               )}
             </>
@@ -214,54 +235,21 @@ function InzeratDetail({ item, onClose, onUpdated }) {
             <>
               <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 20 }}>Upravit inzerát</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div>
-                  <label style={labelStyle}>Název *</label>
-                  <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} />
-                </div>
+                <div><label style={labelStyle}>Název *</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <div>
-                    <label style={labelStyle}>Cena (Kč) *</label>
-                    <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Město *</label>
-                    <input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} style={inputStyle} />
-                  </div>
+                  <div><label style={labelStyle}>Cena (Kč) *</label><input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Město *</label><input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} style={inputStyle} /></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                  <div>
-                    <label style={labelStyle}>Kategorie</label>
-                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      {KATEGORIE.map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Zvíře</label>
-                    <select value={form.animal} onChange={e => setForm(f => ({ ...f, animal: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      {ZVIRATA.map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Stav</label>
-                    <select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      {STAVY.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
+                  <div><label style={labelStyle}>Kategorie</label><select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>{KATEGORIE.map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                  <div><label style={labelStyle}>Zvíře</label><select value={form.animal} onChange={e => setForm(f => ({ ...f, animal: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>{ZVIRATA.map(z => <option key={z} value={z}>{z}</option>)}</select></div>
+                  <div><label style={labelStyle}>Stav</label><select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>{STAVY.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                 </div>
-                <div>
-                  <label style={labelStyle}>Popis</label>
-                  <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
-                </div>
+                <div><label style={labelStyle}>Popis</label><textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
                 {msg && <div style={{ fontSize: "0.85rem", color: msg.includes("❌") ? "#b91c1c" : "#166534" }}>{msg}</div>}
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={handleSave} disabled={saving}
-                    style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                    {saving ? "Ukládám..." : "💾 Uložit změny"}
-                  </button>
-                  <button onClick={() => setEditing(false)}
-                    style={{ background: "#fff", color: "#6b7280", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "12px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                    Zrušit
-                  </button>
+                  <button onClick={handleSave} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "💾 Uložit"}</button>
+                  <button onClick={() => setEditing(false)} style={{ background: "#fff", color: "#6b7280", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "12px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zrušit</button>
                 </div>
               </div>
             </>
@@ -290,9 +278,6 @@ export default function ProfilePage() {
   const { user, profile, signOut, fetchProfile } = useAuth();
   const navigate = useNavigate();
 
-  const role = profile?.role || "buyer";
-  const MENU = SELLER_MENU;
-
   const [activeTab, setActiveTab] = useState("profil");
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ name: profile?.name || "", city: profile?.city || "", bio: profile?.bio || "" });
@@ -301,28 +286,72 @@ export default function ProfilePage() {
   const [passwords, setPasswords] = useState({ new: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState("");
   const [selectedInzerat, setSelectedInzerat] = useState(null);
+  const [mojeInzeraty, setMojeInzeraty] = useState([]);
 
-  const [inzeratForm, setInzeratForm] = useState({
-    title: "", price: "", city: "", desc: "",
-    kategorie: "", zvire: "", stav: "Nový",
-  });
+  // Zprávy
+  const [conversations, setConversations] = useState([]);
+  const [activeConv, setActiveConv] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const [inzeratForm, setInzeratForm] = useState({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
   const [fotky, setFotky] = useState([]);
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
   const [inzeratSaving, setInzeratSaving] = useState(false);
   const [inzeratMsg, setInzeratMsg] = useState("");
-  const [mojeInzeraty, setMojeInzeraty] = useState([]);
 
   const fetchMoje = async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from("inzeraty")
-      .select("*")
-      .eq("seller_id", user.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) setMojeInzeraty(data);
+    const { data } = await supabase.from("inzeraty").select("*").eq("seller_id", user.id).order("created_at", { ascending: false });
+    if (data) setMojeInzeraty(data);
   };
 
-  useEffect(() => { fetchMoje(); }, [user]);
+  const fetchConversations = async () => {
+    if (!user) return;
+    const { data: msgs } = await supabase.from("messages").select("*")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("created_at", { ascending: false });
+
+    if (!msgs) return;
+
+    // Seskup podle inzerat_id
+    const convMap = {};
+    for (const msg of msgs) {
+      const key = msg.inzerat_id;
+      if (!convMap[key]) {
+        const otherId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+        const otherName = msg.sender_id === user.id ? null : msg.sender_name;
+        convMap[key] = {
+          inzerat_id: key,
+          last_message: msg.content,
+          last_time: msg.created_at,
+          other_user_id: otherId,
+          other_user_name: otherName || "Uživatel",
+          unread: 0,
+        };
+      }
+      if (!msg.read && msg.receiver_id === user.id) convMap[key].unread++;
+    }
+
+    // Načti názvy inzerátů
+    const inzeratIds = Object.keys(convMap);
+    if (inzeratIds.length > 0) {
+      const { data: inzeraty } = await supabase.from("inzeraty").select("id, title, foto_urls").in("id", inzeratIds);
+      if (inzeraty) {
+        inzeraty.forEach(inz => {
+          if (convMap[inz.id]) {
+            convMap[inz.id].inzerat_title = inz.title;
+            convMap[inz.id].inzerat_foto = inz.foto_urls?.[0];
+          }
+        });
+      }
+    }
+
+    const convList = Object.values(convMap).sort((a, b) => new Date(b.last_time) - new Date(a.last_time));
+    setConversations(convList);
+    setUnreadCount(convList.reduce((s, c) => s + c.unread, 0));
+  };
+
+  useEffect(() => { fetchMoje(); fetchConversations(); }, [user]);
 
   const mockPrijmy = [0, 0, 145, 0, 340, 115, 0, 0, 0, 0, 0, 0];
   const mockHodnoceni = [
@@ -334,35 +363,28 @@ export default function ProfilePage() {
     setSaving(true);
     const { error } = await supabase.from("profiles").update({ name: form.name, city: form.city, bio: form.bio }).eq("id", user.id);
     setSaving(false);
-    if (error) { setMsg("Chyba při ukládání."); return; }
-    await fetchProfile(user.id);
-    setMsg("✅ Uloženo!");
-    setEditing(false);
+    if (error) { setMsg("Chyba."); return; }
+    await fetchProfile(user.id); setMsg("✅ Uloženo!"); setEditing(false);
     setTimeout(() => setMsg(""), 3000);
   };
 
   const handlePasswordChange = async () => {
     if (passwords.new !== passwords.confirm) { setPwMsg("Hesla se neshodují."); return; }
-    if (passwords.new.length < 6) { setPwMsg("Heslo musí mít alespoň 6 znaků."); return; }
+    if (passwords.new.length < 6) { setPwMsg("Min. 6 znaků."); return; }
     const { error } = await supabase.auth.updateUser({ password: passwords.new });
     if (error) { setPwMsg("Chyba: " + error.message); return; }
-    setPwMsg("✅ Heslo změněno!");
-    setPasswords({ new: "", confirm: "" });
+    setPwMsg("✅ Heslo změněno!"); setPasswords({ new: "", confirm: "" });
     setTimeout(() => setPwMsg(""), 3000);
   };
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   const compressImage = (file) => new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    const img = new Image();
+    const canvas = document.createElement("canvas"); const img = new Image();
     img.onload = () => {
-      const maxSize = 800;
-      let w = img.width, h = img.height;
-      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; }
-      else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const maxSize = 800; let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; } else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
+      canvas.width = w; canvas.height = h; canvas.getContext("2d").drawImage(img, 0, 0, w, h);
       canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.75);
     };
     img.src = URL.createObjectURL(file);
@@ -370,27 +392,20 @@ export default function ProfilePage() {
 
   const handleFotkyChange = async (e) => {
     const files = Array.from(e.target.files);
-    if (fotky.length + files.length > 5) { setInzeratMsg("⚠️ Maximálně 5 fotek."); return; }
+    if (fotky.length + files.length > 5) { setInzeratMsg("⚠️ Max. 5 fotek."); return; }
     const compressed = await Promise.all(files.map(compressImage));
     const newFotky = [...fotky, ...compressed].slice(0, 5);
-    setFotky(newFotky);
-    setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
+    setFotky(newFotky); setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
   };
 
   const removeFotka = (idx) => {
-    const newFotky = fotky.filter((_, i) => i !== idx);
-    const newPreviews = fotkyPreviews.filter((_, i) => i !== idx);
-    setFotky(newFotky);
-    setFotkyPreviews(newPreviews);
+    const nf = fotky.filter((_, i) => i !== idx); const np = fotkyPreviews.filter((_, i) => i !== idx);
+    setFotky(nf); setFotkyPreviews(np);
   };
 
   const handleInzeratSubmit = async () => {
-    if (!inzeratForm.title || !inzeratForm.price || !inzeratForm.city || !inzeratForm.kategorie || !inzeratForm.zvire) {
-      setInzeratMsg("⚠️ Vyplň všechna povinná pole.");
-      return;
-    }
-    setInzeratSaving(true);
-    setInzeratMsg("");
+    if (!inzeratForm.title || !inzeratForm.price || !inzeratForm.city || !inzeratForm.kategorie || !inzeratForm.zvire) { setInzeratMsg("⚠️ Vyplň všechna povinná pole."); return; }
+    setInzeratSaving(true); setInzeratMsg("");
     try {
       const fotoUrls = [];
       for (const fotka of fotky) {
@@ -400,45 +415,23 @@ export default function ProfilePage() {
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
-      const { error: dbError } = await supabase.from("inzeraty").insert({
-        title: inzeratForm.title,
-        price: parseInt(inzeratForm.price),
-        city: inzeratForm.city,
-        description: inzeratForm.desc,
-        category: inzeratForm.kategorie,
-        animal: inzeratForm.zvire,
-        condition: inzeratForm.stav,
-        foto_urls: fotoUrls,
-        seller_id: user.id,
-        seller_name: profile?.name || user.email,
-      });
+      const { error: dbError } = await supabase.from("inzeraty").insert({ title: inzeratForm.title, price: parseInt(inzeratForm.price), city: inzeratForm.city, description: inzeratForm.desc, category: inzeratForm.kategorie, animal: inzeratForm.zvire, condition: inzeratForm.stav, foto_urls: fotoUrls, seller_id: user.id, seller_name: profile?.name || user.email });
       if (dbError) throw dbError;
-      setInzeratMsg("🎉 Inzerát byl zveřejněn!");
+      setInzeratMsg("🎉 Inzerát zveřejněn!");
       setInzeratForm({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
-      setFotky([]);
-      setFotkyPreviews([]);
+      setFotky([]); setFotkyPreviews([]);
       await fetchMoje();
       setTimeout(() => { setInzeratMsg(""); setActiveTab("inzeraty"); }, 2000);
-    } catch (err) {
-      setInzeratMsg("❌ Chyba: " + err.message);
-    }
+    } catch (err) { setInzeratMsg("❌ Chyba: " + err.message); }
     setInzeratSaving(false);
   };
 
   const roleLabel = { buyer: "🛒 Kupující", seller: "🏪 Prodejce", vet: "🩺 Veterinář" };
-
+  const role = profile?.role || "buyer";
   if (!user) { navigate("/"); return null; }
 
-  const inputStyle = {
-    width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10,
-    padding: "10px 14px", fontSize: "0.95rem", outline: "none",
-    fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22"
-  };
-
-  const labelStyle = {
-    fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92",
-    textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6
-  };
+  const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
+  const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
 
   return (
     <div style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'DM Sans', sans-serif" }}>
@@ -456,28 +449,18 @@ export default function ProfilePage() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 28 }}>
-
         <div style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", marginBottom: 12, border: "1px solid #ede8e0", textAlign: "center" }}>
             <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", margin: "0 auto 12px" }}>🐾</div>
             <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.15rem", color: "#1c2b22", marginBottom: 6 }}>{profile?.name || user?.email?.split("@")[0]}</div>
-            <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem", fontWeight: 600 }}>
-              {roleLabel[role] || "🐾 Uživatel"}
-            </span>
+            <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem", fontWeight: 600 }}>{roleLabel[role] || "🐾 Uživatel"}</span>
           </div>
-
           <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1px solid #ede8e0" }}>
-            {MENU.map((item, i) => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)} style={{
-                width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12,
-                background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none",
-                borderBottom: i < MENU.length - 1 ? "1px solid #f7f4ef" : "none",
-                cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400,
-                color: activeTab === item.id ? "#2d6a4f" : "#4a5e52",
-                fontFamily: "'DM Sans', sans-serif", textAlign: "left",
-              }}>
+            {SELLER_MENU.map((item, i) => (
+              <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none", borderBottom: i < SELLER_MENU.length - 1 ? "1px solid #f7f4ef" : "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400, color: activeTab === item.id ? "#2d6a4f" : "#4a5e52", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
                 <span>{item.icon}</span>{item.label}
-                {activeTab === item.id && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
+                {item.id === "zpravy" && unreadCount > 0 && <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 8px", fontSize: "0.72rem", fontWeight: 700 }}>{unreadCount}</span>}
+                {activeTab === item.id && unreadCount === 0 && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
               </button>
             ))}
             <button onClick={handleSignOut} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "none", borderTop: "1px solid #f7f4ef", cursor: "pointer", fontSize: "0.88rem", color: "#b91c1c", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
@@ -487,7 +470,6 @@ export default function ProfilePage() {
         </div>
 
         <div style={{ flex: 1 }}>
-
           {activeTab === "profil" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -507,18 +489,12 @@ export default function ProfilePage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {[{ label: "Celé jméno", key: "name", placeholder: "Jana Nováková" }, { label: "Město", key: "city", placeholder: "Praha" }].map(({ label, key, placeholder }) => (
-                    <div key={key}>
-                      <label style={labelStyle}>{label}</label>
-                      <input value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} />
-                    </div>
+                    <div key={key}><label style={labelStyle}>{label}</label><input value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} /></div>
                   ))}
-                  <div>
-                    <label style={labelStyle}>O mně</label>
-                    <textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Něco o sobě..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} />
-                  </div>
+                  <div><label style={labelStyle}>O mně</label><textarea value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} placeholder="Něco o sobě..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
                   {msg && <div style={{ color: msg.includes("Chyba") ? "#b91c1c" : "#166534", fontSize: "0.85rem" }}>{msg}</div>}
                   <div style={{ display: "flex", gap: 10 }}>
-                    <button onClick={handleSaveProfile} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "💾 Uložit změny"}</button>
+                    <button onClick={handleSaveProfile} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "💾 Uložit"}</button>
                     <button onClick={() => setEditing(false)} style={{ background: "#fff", color: "#6b7280", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "12px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zrušit</button>
                   </div>
                 </div>
@@ -534,42 +510,21 @@ export default function ProfilePage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {mojeInzeraty.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
-                    <div style={{ fontSize: "2rem", marginBottom: 12 }}>📋</div>
-                    <p>Zatím žádné inzeráty.</p>
-                  </div>
+                  <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}><div style={{ fontSize: "2rem", marginBottom: 12 }}>📋</div><p>Zatím žádné inzeráty.</p></div>
                 ) : mojeInzeraty.map(item => {
                   const discounted = item.discount_percent ? Math.round(item.price * (1 - item.discount_percent / 100)) : null;
                   return (
-                    <div key={item.id}
-                      onClick={() => setSelectedInzerat(item)}
-                      style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer", transition: "background 0.15s" }}
-                      onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
-                      onMouseOut={e => e.currentTarget.style.background = "#fff"}
-                    >
+                    <div key={item.id} onClick={() => setSelectedInzerat(item)} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12, cursor: "pointer" }} onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"} onMouseOut={e => e.currentTarget.style.background = "#fff"}>
                       <div style={{ width: 56, height: 56, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0, position: "relative" }}>
-                        {item.foto_urls && item.foto_urls.length > 0
-                          ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
-                        {item.discount_percent && (
-                          <div style={{ position: "absolute", top: 2, left: 2, background: "#e07b39", color: "#fff", borderRadius: 6, padding: "1px 5px", fontSize: "0.6rem", fontWeight: 700 }}>-{item.discount_percent}%</div>
-                        )}
+                        {item.foto_urls?.[0] ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
+                        {item.discount_percent && <div style={{ position: "absolute", top: 2, left: 2, background: "#e07b39", color: "#fff", borderRadius: 6, padding: "1px 5px", fontSize: "0.6rem", fontWeight: 700 }}>-{item.discount_percent}%</div>}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
-                        <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>
-                          📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}
-                        </div>
+                        <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}</div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        {discounted ? (
-                          <>
-                            <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{discounted} Kč</div>
-                            <div style={{ fontSize: "0.78rem", color: "#8a9e92", textDecoration: "line-through" }}>{item.price} Kč</div>
-                          </>
-                        ) : (
-                          <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>
-                        )}
+                        {discounted ? (<><div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{discounted} Kč</div><div style={{ fontSize: "0.78rem", color: "#8a9e92", textDecoration: "line-through" }}>{item.price} Kč</div></>) : <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>}
                         <CondBadge cond={item.condition} />
                       </div>
                     </div>
@@ -594,62 +549,26 @@ export default function ProfilePage() {
                     ))}
                     {fotky.length < 5 && (
                       <label style={{ width: 90, height: 90, borderRadius: 10, border: "2px dashed #b7d9c7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8a9e92", fontSize: "0.75rem", background: "#f7f4ef", gap: 4 }}>
-                        <span style={{ fontSize: "1.5rem" }}>📷</span>
-                        Přidat
+                        <span style={{ fontSize: "1.5rem" }}>📷</span>Přidat
                         <input type="file" accept="image/*" multiple onChange={handleFotkyChange} style={{ display: "none" }} />
                       </label>
                     )}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "#8a9e92" }}>JPG, PNG, WEBP · Max. 5 MB na fotku</div>
                 </div>
-                <div>
-                  <label style={labelStyle}>Název inzerátu *</label>
-                  <input value={inzeratForm.title} onChange={e => setInzeratForm(f => ({ ...f, title: e.target.value }))} placeholder="Pelíšek pro psa, vel. M" style={inputStyle} />
-                </div>
+                <div><label style={labelStyle}>Název inzerátu *</label><input value={inzeratForm.title} onChange={e => setInzeratForm(f => ({ ...f, title: e.target.value }))} placeholder="Pelíšek pro psa, vel. M" style={inputStyle} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Kategorie *</label>
-                    <select value={inzeratForm.kategorie} onChange={e => setInzeratForm(f => ({ ...f, kategorie: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      <option value="">Vybrat...</option>
-                      {KATEGORIE.map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Zvíře *</label>
-                    <select value={inzeratForm.zvire} onChange={e => setInzeratForm(f => ({ ...f, zvire: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      <option value="">Vybrat...</option>
-                      {ZVIRATA.map(z => <option key={z} value={z}>{z}</option>)}
-                    </select>
-                  </div>
+                  <div><label style={labelStyle}>Kategorie *</label><select value={inzeratForm.kategorie} onChange={e => setInzeratForm(f => ({ ...f, kategorie: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}><option value="">Vybrat...</option>{KATEGORIE.map(k => <option key={k} value={k}>{k}</option>)}</select></div>
+                  <div><label style={labelStyle}>Zvíře *</label><select value={inzeratForm.zvire} onChange={e => setInzeratForm(f => ({ ...f, zvire: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}><option value="">Vybrat...</option>{ZVIRATA.map(z => <option key={z} value={z}>{z}</option>)}</select></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Cena (Kč) *</label>
-                    <input type="number" value={inzeratForm.price} onChange={e => setInzeratForm(f => ({ ...f, price: e.target.value }))} placeholder="350" style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Stav *</label>
-                    <select value={inzeratForm.stav} onChange={e => setInzeratForm(f => ({ ...f, stav: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
-                      {STAVY.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Město *</label>
-                    <input value={inzeratForm.city} onChange={e => setInzeratForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" style={inputStyle} />
-                  </div>
+                  <div><label style={labelStyle}>Cena (Kč) *</label><input type="number" value={inzeratForm.price} onChange={e => setInzeratForm(f => ({ ...f, price: e.target.value }))} placeholder="350" style={inputStyle} /></div>
+                  <div><label style={labelStyle}>Stav *</label><select value={inzeratForm.stav} onChange={e => setInzeratForm(f => ({ ...f, stav: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>{STAVY.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                  <div><label style={labelStyle}>Město *</label><input value={inzeratForm.city} onChange={e => setInzeratForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" style={inputStyle} /></div>
                 </div>
-                <div>
-                  <label style={labelStyle}>Popis</label>
-                  <textarea value={inzeratForm.desc} onChange={e => setInzeratForm(f => ({ ...f, desc: e.target.value }))} placeholder="Stav, rozměry, důvod prodeje, případné vady..." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} />
-                </div>
-                {inzeratMsg && (
-                  <div style={{ background: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#880e4f" : "#1b5e20" }}>
-                    {inzeratMsg}
-                  </div>
-                )}
-                <button onClick={handleInzeratSubmit} disabled={inzeratSaving} style={{ background: inzeratSaving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: inzeratSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
-                  {inzeratSaving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}
-                </button>
+                <div><label style={labelStyle}>Popis</label><textarea value={inzeratForm.desc} onChange={e => setInzeratForm(f => ({ ...f, desc: e.target.value }))} placeholder="Stav, rozměry, důvod prodeje..." style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} /></div>
+                {inzeratMsg && <div style={{ background: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: inzeratMsg.includes("❌") || inzeratMsg.includes("⚠️") ? "#880e4f" : "#1b5e20" }}>{inzeratMsg}</div>}
+                <button onClick={handleInzeratSubmit} disabled={inzeratSaving} style={{ background: inzeratSaving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: inzeratSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>{inzeratSaving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}</button>
               </div>
             </div>
           )}
@@ -657,11 +576,7 @@ export default function ProfilePage() {
           {activeTab === "prijmy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                {[
-                  { label: "Celková hodnota", value: `${mojeInzeraty.reduce((s, i) => s + i.price, 0)} Kč`, icon: "💰" },
-                  { label: "Moje inzeráty", value: mojeInzeraty.length, icon: "📋" },
-                  { label: "Se slevou", value: mojeInzeraty.filter(i => i.discount_percent).length, icon: "🏷️" }
-                ].map(({ label, value, icon }) => (
+                {[{ label: "Celková hodnota", value: `${mojeInzeraty.reduce((s, i) => s + i.price, 0)} Kč`, icon: "💰" }, { label: "Moje inzeráty", value: mojeInzeraty.length, icon: "📋" }, { label: "Se slevou", value: mojeInzeraty.filter(i => i.discount_percent).length, icon: "🏷️" }].map(({ label, value, icon }) => (
                   <div key={label} style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
                     <div style={{ fontSize: "1.8rem", marginBottom: 8 }}>{icon}</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{value}</div>
@@ -699,12 +614,46 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "zpravy" && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Zprávy</h2>
-              <div style={{ textAlign: "center", padding: "60px 20px", color: "#8a9e92" }}>
-                <div style={{ fontSize: "3rem", marginBottom: 16 }}>💬</div>
-                <p>Zatím žádné zprávy.</p>
-              </div>
+            <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden", minHeight: 400 }}>
+              {activeConv ? (
+                <div style={{ height: 520 }}>
+                  <InboxChat conv={activeConv} user={user} onClose={() => setActiveConv(null)} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: "24px 28px", borderBottom: "1px solid #ede8e0" }}>
+                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", margin: 0 }}>Zprávy</h2>
+                  </div>
+                  {conversations.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "#8a9e92" }}>
+                      <div style={{ fontSize: "3rem", marginBottom: 16 }}>💬</div>
+                      <p>Zatím žádné zprávy.</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {conversations.map(conv => (
+                        <div key={conv.inzerat_id} onClick={() => setActiveConv(conv)}
+                          style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 24px", borderBottom: "1px solid #f7f4ef", cursor: "pointer", background: conv.unread > 0 ? "#f2faf6" : "#fff" }}
+                          onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
+                          onMouseOut={e => e.currentTarget.style.background = conv.unread > 0 ? "#f2faf6" : "#fff"}>
+                          <div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
+                            {conv.inzerat_foto ? <img src={conv.inzerat_foto} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>🐾</div>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: conv.unread > 0 ? 700 : 600, color: "#1c2b22", marginBottom: 3, fontSize: "0.9rem" }}>{conv.inzerat_title || "Inzerát"}</div>
+                            <div style={{ fontSize: "0.8rem", color: "#8a9e92", marginBottom: 2 }}>S: {conv.other_user_name}</div>
+                            <div style={{ fontSize: "0.8rem", color: "#4a5e52", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.last_message}</div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginBottom: 4 }}>{new Date(conv.last_time).toLocaleDateString("cs-CZ")}</div>
+                            {conv.unread > 0 && <div style={{ background: "#2d6a4f", color: "#fff", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 700, marginLeft: "auto" }}>{conv.unread}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -713,30 +662,23 @@ export default function ProfilePage() {
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Změna hesla</h2>
               <div style={{ maxWidth: 400, display: "flex", flexDirection: "column", gap: 16 }}>
                 {[{ label: "Nové heslo", key: "new", placeholder: "Min. 6 znaků" }, { label: "Potvrdit heslo", key: "confirm", placeholder: "Zopakuj heslo" }].map(({ label, key, placeholder }) => (
-                  <div key={key}>
-                    <label style={labelStyle}>{label}</label>
-                    <input type="password" value={passwords[key]} onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} />
-                  </div>
+                  <div key={key}><label style={labelStyle}>{label}</label><input type="password" value={passwords[key]} onChange={e => setPasswords(p => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={inputStyle} /></div>
                 ))}
                 {pwMsg && <div style={{ color: pwMsg.includes("✅") ? "#166534" : "#b91c1c", fontSize: "0.85rem" }}>{pwMsg}</div>}
                 <button onClick={handlePasswordChange} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🔒 Změnit heslo</button>
               </div>
             </div>
           )}
-
         </div>
       </div>
 
       {selectedInzerat && (
-        <InzeratDetail
-          item={selectedInzerat}
-          onClose={() => setSelectedInzerat(null)}
+        <InzeratDetail item={selectedInzerat} onClose={() => setSelectedInzerat(null)}
           onUpdated={async () => {
             await fetchMoje();
             const { data } = await supabase.from("inzeraty").select("*").eq("id", selectedInzerat.id).single();
             if (data) setSelectedInzerat(data);
-          }}
-        />
+          }} />
       )}
     </div>
   );
