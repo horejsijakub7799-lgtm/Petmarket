@@ -11,29 +11,15 @@ const CSS = `
   ${FONTS}
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --green: #2d6a4f;
-    --green-mid: #3a856a;
-    --green-light: #e8f5ef;
-    --green-pale: #f2faf6;
-    --sand: #f7f4ef;
-    --sand-dark: #ede8e0;
-    --text: #1c2b22;
-    --text-mid: #4a5e52;
-    --text-light: #8a9e92;
-    --white: #ffffff;
-    --accent: #e07b39;
-    --accent-light: #fdf0e6;
-    --shadow-sm: 0 1px 4px rgba(44,80,58,0.07);
-    --shadow-md: 0 4px 20px rgba(44,80,58,0.10);
-    --shadow-lg: 0 12px 40px rgba(44,80,58,0.14);
-    --radius: 16px;
-    --radius-sm: 10px;
+    --green: #2d6a4f; --green-mid: #3a856a; --green-light: #e8f5ef; --green-pale: #f2faf6;
+    --sand: #f7f4ef; --sand-dark: #ede8e0; --text: #1c2b22; --text-mid: #4a5e52;
+    --text-light: #8a9e92; --white: #ffffff; --accent: #e07b39; --accent-light: #fdf0e6;
+    --shadow-sm: 0 1px 4px rgba(44,80,58,0.07); --shadow-md: 0 4px 20px rgba(44,80,58,0.10);
+    --shadow-lg: 0 12px 40px rgba(44,80,58,0.14); --radius: 16px; --radius-sm: 10px;
   }
   body { font-family: 'DM Sans', sans-serif; background: var(--sand); color: var(--text); }
   h1,h2,h3 { font-family: 'DM Serif Display', serif; }
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: var(--sand-dark); }
-  ::-webkit-scrollbar-thumb { background: #b5cec0; border-radius: 4px; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--sand-dark); } ::-webkit-scrollbar-thumb { background: #b5cec0; border-radius: 4px; }
   input, select, textarea { font-family: 'DM Sans', sans-serif; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes popIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
@@ -62,18 +48,18 @@ const CSS = `
 `;
 
 const LISTINGS = [
-  { id:1, title:"Pelíšek M/L — béžový plyš", price:340, cat:"vybaveni", animal:"pes", emoji:"🛏️", cond:"dobrý", city:"Praha", seller:"Jana K.", desc:"Pohodlný plyšový pelíšek 80×60 cm.", saved:false, time:"2 dny" },
-  { id:2, title:"Klec pro křečka + příslušenství", price:190, cat:"vybaveni", animal:"hlodavec", emoji:"🏠", cond:"dobrý", city:"Brno", seller:"Tomáš M.", desc:"Kompletní klec včetně příslušenství.", saved:false, time:"3 dny" },
-  { id:3, title:"Zimní bundička — vel. S", price:145, cat:"obleceni", animal:"pes", emoji:"🧥", cond:"jako nový", city:"Ostrava", seller:"Lucie P.", desc:"Teplá zimní bunda, oblečena 3×.", saved:false, time:"5 dní" },
-  { id:4, title:"Prémiové granule pro kočky 2 kg", price:175, cat:"krmivo", animal:"kočka", emoji:"🐟", cond:"nový", city:"Praha", seller:"Martin V.", desc:"Neotevřené granule pro dospělé kočky.", saved:false, time:"1 den" },
-  { id:5, title:"Škrabadlo s boudičkou 120 cm", price:390, cat:"vybaveni", animal:"kočka", emoji:"🌴", cond:"dobrý", city:"Plzeň", seller:"Eva S.", desc:"Stabilní škrabadlo s houpátkem.", saved:false, time:"4 dny" },
-  { id:6, title:"Kožené vodítko + obojek — sada", price:115, cat:"vybaveni", animal:"pes", emoji:"🔗", cond:"jako nový", city:"Liberec", seller:"Petr N.", desc:"Černá pravá kůže, obvod 35–45 cm.", saved:false, time:"6 dní" },
-  { id:7, title:"Přírodní pamlsky pro psy 500 g", price:85, cat:"krmivo", animal:"pes", emoji:"🦴", cond:"nový", city:"Olomouc", seller:"Alena B.", desc:"Sušené přírodní pamlsky.", saved:false, time:"2 dny" },
-  { id:8, title:"Přepravní box na kočku", price:270, cat:"vybaveni", animal:"kočka", emoji:"📦", cond:"dobrý", city:"Č. Budějovice", seller:"Roman H.", desc:"Plastový přepravní box 50×30×30 cm.", saved:false, time:"1 týden" },
-  { id:9, title:"Hračky — sada 5 myšiček", price:55, cat:"vybaveni", animal:"kočka", emoji:"🐭", cond:"nový", city:"Praha", seller:"Jana K.", desc:"Set 5 plyšových myšiček s catnipem.", saved:false, time:"3 dny" },
-  { id:10, title:"Fotbalový dres pro psa — M", price:75, cat:"obleceni", animal:"pes", emoji:"⚽", cond:"jako nový", city:"Brno", seller:"Monika T.", desc:"Roztomilý fotbalový dres M.", saved:false, time:"5 dní" },
-  { id:11, title:"Akvárium 60L komplet", price:650, cat:"vybaveni", animal:"ryba", emoji:"🐠", cond:"dobrý", city:"Praha", seller:"Ondřej K.", desc:"Akvárium 60 litrů, filtrace, LED.", saved:false, time:"2 dny" },
-  { id:12, title:"Vitamíny pro hlodavce 100ml", price:70, cat:"krmivo", animal:"hlodavec", emoji:"💊", cond:"nový", city:"Hradec Králové", seller:"Tereza L.", desc:"Kapkové vitamíny do vody.", saved:false, time:"4 dny" },
+  { id:1, title:"Pelíšek M/L — béžový plyš", price:340, cat:"vybaveni", animal:"pes", emoji:"🛏️", cond:"dobrý", city:"Praha", seller:"Jana K.", desc:"Pohodlný plyšový pelíšek 80×60 cm.", saved:false, time:"2 dny", views:0 },
+  { id:2, title:"Klec pro křečka + příslušenství", price:190, cat:"vybaveni", animal:"hlodavec", emoji:"🏠", cond:"dobrý", city:"Brno", seller:"Tomáš M.", desc:"Kompletní klec.", saved:false, time:"3 dny", views:0 },
+  { id:3, title:"Zimní bundička — vel. S", price:145, cat:"obleceni", animal:"pes", emoji:"🧥", cond:"jako nový", city:"Ostrava", seller:"Lucie P.", desc:"Teplá zimní bunda.", saved:false, time:"5 dní", views:0 },
+  { id:4, title:"Prémiové granule pro kočky 2 kg", price:175, cat:"krmivo", animal:"kočka", emoji:"🐟", cond:"nový", city:"Praha", seller:"Martin V.", desc:"Neotevřené granule.", saved:false, time:"1 den", views:0 },
+  { id:5, title:"Škrabadlo s boudičkou 120 cm", price:390, cat:"vybaveni", animal:"kočka", emoji:"🌴", cond:"dobrý", city:"Plzeň", seller:"Eva S.", desc:"Stabilní škrabadlo.", saved:false, time:"4 dny", views:0 },
+  { id:6, title:"Kožené vodítko + obojek — sada", price:115, cat:"vybaveni", animal:"pes", emoji:"🔗", cond:"jako nový", city:"Liberec", seller:"Petr N.", desc:"Černá pravá kůže.", saved:false, time:"6 dní", views:0 },
+  { id:7, title:"Přírodní pamlsky pro psy 500 g", price:85, cat:"krmivo", animal:"pes", emoji:"🦴", cond:"nový", city:"Olomouc", seller:"Alena B.", desc:"Sušené pamlsky.", saved:false, time:"2 dny", views:0 },
+  { id:8, title:"Přepravní box na kočku", price:270, cat:"vybaveni", animal:"kočka", emoji:"📦", cond:"dobrý", city:"Č. Budějovice", seller:"Roman H.", desc:"Plastový box.", saved:false, time:"1 týden", views:0 },
+  { id:9, title:"Hračky — sada 5 myšiček", price:55, cat:"vybaveni", animal:"kočka", emoji:"🐭", cond:"nový", city:"Praha", seller:"Jana K.", desc:"Set myšiček s catnipem.", saved:false, time:"3 dny", views:0 },
+  { id:10, title:"Fotbalový dres pro psa — M", price:75, cat:"obleceni", animal:"pes", emoji:"⚽", cond:"jako nový", city:"Brno", seller:"Monika T.", desc:"Dres M.", saved:false, time:"5 dní", views:0 },
+  { id:11, title:"Akvárium 60L komplet", price:650, cat:"vybaveni", animal:"ryba", emoji:"🐠", cond:"dobrý", city:"Praha", seller:"Ondřej K.", desc:"Akvárium s filtrací.", saved:false, time:"2 dny", views:0 },
+  { id:12, title:"Vitamíny pro hlodavce 100ml", price:70, cat:"krmivo", animal:"hlodavec", emoji:"💊", cond:"nový", city:"Hradec Králové", seller:"Tereza L.", desc:"Kapkové vitamíny.", saved:false, time:"4 dny", views:0 },
 ];
 
 const SERVICES = [
@@ -125,8 +111,9 @@ function Card({ item, onOpen, onSave, delay }) {
         </button>
       </div>
       <div style={{ padding:"14px 16px 16px" }}>
-        <div style={{ fontSize:"0.8rem", color:"var(--text-light)", marginBottom:5, fontWeight:500 }}>
-          📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : item.time}
+        <div style={{ fontSize:"0.8rem", color:"var(--text-light)", marginBottom:5, fontWeight:500, display:"flex", justifyContent:"space-between" }}>
+          <span>📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : item.time}</span>
+          {(item.views > 0) && <span>👁 {item.views}</span>}
         </div>
         <div style={{ fontWeight:600, fontSize:"0.95rem", color:"var(--text)", lineHeight:1.35, marginBottom:10, minHeight:40 }}>{item.title}</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -147,8 +134,15 @@ function Card({ item, onOpen, onSave, delay }) {
   );
 }
 
-function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired }) {
+function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onView }) {
   const [fotoIdx, setFotoIdx] = useState(0);
+
+  useEffect(() => {
+    if (item?.id && item?.seller_id) {
+      onView(item.id);
+    }
+  }, [item?.id]);
+
   if (!item) return null;
   const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
   const discountedPrice = item.discount_percent ? Math.round(item.price * (1 - item.discount_percent / 100)) : null;
@@ -187,7 +181,12 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired }) {
           </div>
           <p style={{ color:"var(--text-mid)", fontSize:"0.92rem", lineHeight:1.65, marginBottom:18 }}>{item.desc || item.description}</p>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:24 }}>
-            {[`📍 ${item.city}`, `👤 ${item.seller_name || item.seller || "Prodejce"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`].map(tag => (
+            {[
+              `📍 ${item.city}`,
+              `👤 ${item.seller_name || item.seller || "Prodejce"}`,
+              `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`,
+              item.views > 0 ? `👁 ${item.views} zobrazení` : null,
+            ].filter(Boolean).map(tag => (
               <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)", borderRadius:20, padding:"5px 12px", fontSize:"0.78rem", color:"var(--text-mid)", fontWeight:500 }}>{tag}</span>
             ))}
           </div>
@@ -308,12 +307,8 @@ function ComingSoonModal({ service, onClose }) {
         <div style={{ padding:"40px 32px 36px" }}>
           <div style={{ fontSize:"3.5rem", marginBottom:16 }}>{service.icon}</div>
           <h2 style={{ fontFamily:"'DM Serif Display', serif", fontSize:"1.5rem", color:"var(--text)", marginBottom:12 }}>{service.label}</h2>
-          <p style={{ color:"var(--text-mid)", fontSize:"0.95rem", lineHeight:1.6, marginBottom:24 }}>
-            Tato sekce je ve vývoji a brzy bude k dispozici. Pracujeme na tom, abychom ti přinesli ty nejlepší služby pro tvého mazlíčka.
-          </p>
-          <div style={{ background:"var(--green-light)", borderRadius:12, padding:"14px 18px", marginBottom:24, fontSize:"0.85rem", color:"var(--green)", fontWeight:600 }}>
-            🚀 Spuštění brzy
-          </div>
+          <p style={{ color:"var(--text-mid)", fontSize:"0.95rem", lineHeight:1.6, marginBottom:24 }}>Tato sekce je ve vývoji a brzy bude k dispozici.</p>
+          <div style={{ background:"var(--green-light)", borderRadius:12, padding:"14px 18px", marginBottom:24, fontSize:"0.85rem", color:"var(--green)", fontWeight:600 }}>🚀 Spuštění brzy</div>
           <button className="btn-primary" style={{ width:"100%" }} onClick={onClose}>Zpět na bazar</button>
         </div>
       </div>
@@ -346,6 +341,14 @@ export default function PetMarket() {
     fetchInzeraty();
   }, []);
 
+  const handleView = async (id) => {
+    // Necount vlastní inzeráty
+    if (selected?.seller_id === user?.id) return;
+    await supabase.rpc("increment_views", { inzerat_id: id });
+    setItems(ls => ls.map(i => i.id === id ? {...i, views: (i.views || 0) + 1} : i));
+    if (selected?.id === id) setSelected(s => s ? {...s, views: (s.views || 0) + 1} : s);
+  };
+
   const handleServiceClick = (service) => {
     if (service.id === "bazar") setActiveService("bazar");
     else setComingSoon(service);
@@ -374,7 +377,6 @@ export default function PetMarket() {
     <div style={{ minHeight:"100vh", background:"var(--sand)" }}>
       <style>{CSS}</style>
 
-      {/* NAVBAR */}
       <nav style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 12px rgba(44,80,58,0.07)" }}>
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"0 24px", display:"flex", alignItems:"center", height:68, gap:18 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginRight:4 }}>
@@ -403,7 +405,6 @@ export default function PetMarket() {
         </div>
       </nav>
 
-      {/* HERO */}
       <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)" }}>
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 0", textAlign:"center" }}>
           <h1 style={{ color:"var(--white)", fontSize:"clamp(1.4rem,3vw,2rem)", marginBottom:6, letterSpacing:"-0.02em" }}>
@@ -412,33 +413,22 @@ export default function PetMarket() {
           <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.9rem", marginBottom:20 }}>
             Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.
           </p>
-
-          {/* Menu služeb */}
           <div style={{ display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
             {SERVICES.map(service => (
-              <button
-                key={service.id}
-                className={`service-btn ${activeService === service.id ? "active" : ""}`}
-                onClick={() => handleServiceClick(service)}
-              >
+              <button key={service.id} className={`service-btn ${activeService === service.id ? "active" : ""}`} onClick={() => handleServiceClick(service)}>
                 <span style={{ fontSize:"1.5rem" }}>{service.icon}</span>
                 <span style={{ fontSize:"0.7rem", fontWeight:600, textAlign:"center", lineHeight:1.2, maxWidth:80 }}>{service.label}</span>
               </button>
             ))}
           </div>
         </div>
-
-        {/* Statistiky */}
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"10px 24px", display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
           {[["🛍️", `${items.length} inzerátů`], ["🐾", "4 kategorie"], ["🏙️", "Celá ČR"]].map(([icon,label]) => (
-            <div key={label} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"4px 12px", display:"flex", alignItems:"center", gap:6, color:"var(--white)", fontSize:"0.78rem", fontWeight:600 }}>
-              {icon} {label}
-            </div>
+            <div key={label} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"4px 12px", display:"flex", alignItems:"center", gap:6, color:"var(--white)", fontSize:"0.78rem", fontWeight:600 }}>{icon} {label}</div>
           ))}
         </div>
       </div>
 
-      {/* FILTRY */}
       <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"14px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
@@ -462,7 +452,6 @@ export default function PetMarket() {
         </div>
       </div>
 
-      {/* GRID */}
       <main style={{ maxWidth:1180, margin:"0 auto", padding:"24px 24px 48px" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"70px 20px", color:"var(--text-light)" }}>
@@ -478,8 +467,7 @@ export default function PetMarket() {
         )}
       </main>
 
-      {/* MODALY */}
-      {selected && <DetailModal item={selected} onClose={() => setSelected(null)} onChat={item => { setSelected(null); setChatItem(item); }} onSave={handleSave} user={user} onAuthRequired={() => setShowAuth(true)} />}
+      {selected && <DetailModal item={selected} onClose={() => setSelected(null)} onChat={item => { setSelected(null); setChatItem(item); }} onSave={handleSave} user={user} onAuthRequired={() => setShowAuth(true)} onView={handleView} />}
       {chatItem && <ChatModal item={chatItem} onClose={() => setChatItem(null)} />}
       {showAdd && <AddModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
       {showProfile && user && <ProfilePage onClose={() => setShowProfile(false)} />}
