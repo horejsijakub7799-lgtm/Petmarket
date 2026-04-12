@@ -16,8 +16,8 @@ const PARTNERI = [
     title: "Psí hotel",
     desc: "Nabídněte ubytování pro psy majitelům kteří odjíždí na dovolenou nebo služební cestu.",
     price: "od 399 Kč/měsíc",
-    url: null,
-    available: false,
+    url: "/hotel/registrace",
+available: true,
   },
   {
     id: "venceni",
