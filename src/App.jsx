@@ -56,6 +56,9 @@ const CSS = `
   .label { font-size: 0.75rem; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
   .overlay { position: fixed; inset: 0; background: rgba(28,43,34,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; backdrop-filter: blur(5px); }
   .modal { background: var(--white); border-radius: 22px; max-width: 500px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: popIn 0.25s ease; }
+  .service-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; border-radius: 14px; border: none; cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif; min-width: 90px; }
+  .service-btn:hover { transform: translateY(-3px); }
+  .service-btn.active { background: rgba(255,255,255,0.25) !important; }
 `;
 
 const LISTINGS = [
@@ -71,6 +74,16 @@ const LISTINGS = [
   { id:10, title:"Fotbalový dres pro psa — M", price:75, cat:"obleceni", animal:"pes", emoji:"⚽", cond:"jako nový", city:"Brno", seller:"Monika T.", desc:"Roztomilý fotbalový dres velikost M.", saved:false, time:"5 dní" },
   { id:11, title:"Akvárium 60L komplet", price:650, cat:"vybaveni", animal:"ryba", emoji:"🐠", cond:"dobrý", city:"Praha", seller:"Ondřej K.", desc:"Akvárium 60 litrů, filtrace, osvětlení LED.", saved:false, time:"2 dny" },
   { id:12, title:"Vitamíny pro hlodavce 100ml", price:70, cat:"krmivo", animal:"hlodavec", emoji:"💊", cond:"nový", city:"Hradec Králové", seller:"Tereza L.", desc:"Kapkové vitamíny do vody, neotevřeno.", saved:false, time:"4 dny" },
+];
+
+const SERVICES = [
+  { id: "bazar", label: "Bazar věcí", icon: "🛍️", active: true },
+  { id: "veterinar", label: "Veterinární kliniky", icon: "🩺", active: false },
+  { id: "hlidani", label: "Hlídání", icon: "🏠", active: false },
+  { id: "venceni", label: "Venčení", icon: "🦮", active: false },
+  { id: "hotel", label: "Psí hotely", icon: "🏨", active: false },
+  { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️", active: false },
+  { id: "partneri", label: "Partnerští prodejci", icon: "🤝", active: false },
 ];
 
 const CATS = [
@@ -149,9 +162,7 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div style={{ height:400, background:"linear-gradient(145deg, var(--green-pale), var(--sand))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"6rem", position:"relative", borderRadius:"22px 22px 0 0", overflow:"hidden" }}>
           {fotos ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"contain" }} /> : (item.emoji || "🐾")}
-          {item.discount_percent && (
-            <div style={{ position:"absolute", top:14, left:14, background:"#e07b39", color:"#fff", borderRadius:20, padding:"4px 12px", fontSize:"0.85rem", fontWeight:700 }}>-{item.discount_percent}%</div>
-          )}
+          {item.discount_percent && <div style={{ position:"absolute", top:14, left:14, background:"#e07b39", color:"#fff", borderRadius:20, padding:"4px 12px", fontSize:"0.85rem", fontWeight:700 }}>-{item.discount_percent}%</div>}
           {fotos && fotos.length > 1 && <>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }} style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)", background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700, color:"#fff" }}>‹</button>
             <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }} style={{ position:"absolute", right:10, top:"50%", transform:"translateY(-50%)", background:"rgba(0,0,0,0.45)", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:"1.2rem", fontWeight:700, color:"#fff" }}>›</button>
@@ -184,21 +195,14 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired }) {
             ))}
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            {!isOwner && (
-              <button className="btn-primary" style={{ flex:1 }} onClick={() => {
-                if (!user) { onClose(); onAuthRequired(); return; }
-                onChat(item);
-              }}>
+            {!isOwner ? (
+              <button className="btn-primary" style={{ flex:1 }} onClick={() => { if (!user) { onClose(); onAuthRequired(); return; } onChat(item); }}>
                 💬 Napsat prodejci
               </button>
+            ) : (
+              <div style={{ flex:1, background:"var(--green-light)", color:"var(--green)", borderRadius:10, padding:"12px", textAlign:"center", fontSize:"0.9rem", fontWeight:600 }}>📋 Toto je tvůj inzerát</div>
             )}
-            {isOwner && (
-              <div style={{ flex:1, background:"var(--green-light)", color:"var(--green)", borderRadius:10, padding:"12px", textAlign:"center", fontSize:"0.9rem", fontWeight:600 }}>
-                📋 Toto je tvůj inzerát
-              </div>
-            )}
-            <button className="btn-secondary" onClick={() => onSave(item.id)}
-              style={{ padding:"10px 16px", color: item.saved ? "var(--accent)" : "var(--green)", borderColor: item.saved ? "var(--accent)" : "var(--green)" }}>
+            <button className="btn-secondary" onClick={() => onSave(item.id)} style={{ padding:"10px 16px", color: item.saved ? "var(--accent)" : "var(--green)", borderColor: item.saved ? "var(--accent)" : "var(--green)" }}>
               {item.saved ? "♥ Uloženo" : "♡ Uložit"}
             </button>
           </div>
@@ -217,15 +221,11 @@ function AddModal({ onClose, onAdd }) {
   const set = (k,v) => setF(p => ({...p,[k]:v}));
 
   const compressImage = (file) => new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    const img = new Image();
+    const canvas = document.createElement("canvas"); const img = new Image();
     img.onload = () => {
-      const maxSize = 800;
-      let w = img.width, h = img.height;
-      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; }
-      else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      const maxSize = 800; let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; } else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
+      canvas.width = w; canvas.height = h; canvas.getContext("2d").drawImage(img, 0, 0, w, h);
       canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.75);
     };
     img.src = URL.createObjectURL(file);
@@ -235,8 +235,7 @@ function AddModal({ onClose, onAdd }) {
     const files = Array.from(e.target.files);
     const compressed = await Promise.all(files.map(compressImage));
     const newFotky = [...fotky, ...compressed].slice(0, 5);
-    setFotky(newFotky);
-    setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
+    setFotky(newFotky); setFotkyPreviews(newFotky.map(f => URL.createObjectURL(f)));
   };
 
   const submit = async () => {
@@ -252,12 +251,7 @@ function AddModal({ onClose, onAdd }) {
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
-      const { error } = await supabase.from("inzeraty").insert({
-        title: f.title, price: parseInt(f.price), city: f.city,
-        description: f.desc, category: f.cat, animal: f.animal,
-        condition: f.cond, foto_urls: fotoUrls,
-        seller_id: user.id, seller_name: profile?.name || user.email,
-      });
+      const { error } = await supabase.from("inzeraty").insert({ title: f.title, price: parseInt(f.price), city: f.city, description: f.desc, category: f.cat, animal: f.animal, condition: f.cond, foto_urls: fotoUrls, seller_id: user.id, seller_name: profile?.name || user.email });
       if (error) throw error;
       onAdd({ ...f, id: Date.now(), price: parseInt(f.price), foto_urls: fotoUrls });
       onClose();
@@ -290,10 +284,7 @@ function AddModal({ onClose, onAdd }) {
               )}
             </div>
           </div>
-          <div>
-            <label className="label">Název inzerátu *</label>
-            <input className="input-field" value={f.title} onChange={e=>set("title",e.target.value)} placeholder="Např. Pelíšek pro psa, vel. M" />
-          </div>
+          <div><label className="label">Název inzerátu *</label><input className="input-field" value={f.title} onChange={e=>set("title",e.target.value)} placeholder="Např. Pelíšek pro psa, vel. M" /></div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             <div><label className="label">Cena (Kč) *</label><input className="input-field" type="number" value={f.price} onChange={e=>set("price",e.target.value)} placeholder="350" /></div>
             <div><label className="label">Město *</label><input className="input-field" value={f.city} onChange={e=>set("city",e.target.value)} placeholder="Praha" /></div>
@@ -304,18 +295,31 @@ function AddModal({ onClose, onAdd }) {
               { label:"Zvíře", key:"animal", opts:[["pes","Pes"],["kočka","Kočka"],["hlodavec","Hlodavec"],["ryba","Ryba"],["ptak","Pták"],["jine","Jiné"]] },
               { label:"Stav", key:"cond", opts:[["nový","Nový"],["jako nový","Jako nový"],["dobrý","Dobrý"],["použitý","Použitý"]] },
             ].map(({label,key,opts}) => (
-              <div key={key}>
-                <label className="label">{label}</label>
-                <select className="input-field" style={{ cursor:"pointer" }} value={f[key]} onChange={e=>set(key,e.target.value)}>
-                  {opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </div>
+              <div key={key}><label className="label">{label}</label><select className="input-field" style={{ cursor:"pointer" }} value={f[key]} onChange={e=>set(key,e.target.value)}>{opts.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>
             ))}
           </div>
           <div><label className="label">Popis</label><textarea className="input-field" style={{ minHeight:80, resize:"vertical" }} value={f.desc} onChange={e=>set("desc",e.target.value)} placeholder="Stav, rozměry, důvod prodeje..." /></div>
-          <button className="btn-primary" style={{ width:"100%", padding:"14px", fontSize:"1rem" }} onClick={submit} disabled={saving}>
-            {saving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}
-          </button>
+          <button className="btn-primary" style={{ width:"100%", padding:"14px", fontSize:"1rem" }} onClick={submit} disabled={saving}>{saving ? "Zveřejňuji..." : "✓ Zveřejnit inzerát"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComingSoonModal({ service, onClose }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth:420, textAlign:"center" }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding:"40px 32px 36px" }}>
+          <div style={{ fontSize:"3.5rem", marginBottom:16 }}>{service.icon}</div>
+          <h2 style={{ fontFamily:"'DM Serif Display', serif", fontSize:"1.5rem", color:"var(--text)", marginBottom:12 }}>{service.label}</h2>
+          <p style={{ color:"var(--text-mid)", fontSize:"0.95rem", lineHeight:1.6, marginBottom:24 }}>
+            Tato sekce je ve vývoji a brzy bude k dispozici. Pracujeme na tom, abychom ti přinesli ty nejlepší služby pro tvého mazlíčka.
+          </p>
+          <div style={{ background:"var(--green-light)", borderRadius:12, padding:"14px 18px", marginBottom:24, fontSize:"0.85rem", color:"var(--green)", fontWeight:600 }}>
+            🚀 Spuštění brzy
+          </div>
+          <button className="btn-primary" style={{ width:"100%" }} onClick={onClose}>Zpět na bazar</button>
         </div>
       </div>
     </div>
@@ -324,7 +328,8 @@ function AddModal({ onClose, onAdd }) {
 
 export default function PetMarket() {
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activeService, setActiveService] = useState("bazar");
+  const [comingSoon, setComingSoon] = useState(null);
   const [cat, setCat] = useState("vse");
   const [animal, setAnimal] = useState("vse");
   const [search, setSearch] = useState("");
@@ -342,11 +347,17 @@ export default function PetMarket() {
     const fetchInzeraty = async () => {
       const { data, error } = await supabase.from("inzeraty").select("*").order("created_at", { ascending: false });
       if (!error) setItems(data);
-      
-      setLoading(false);
     };
     fetchInzeraty();
   }, []);
+
+  const handleServiceClick = (service) => {
+    if (service.id === "bazar") {
+      setActiveService("bazar");
+    } else {
+      setComingSoon(service);
+    }
+  };
 
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
   const handleSave = id => {
@@ -370,6 +381,8 @@ export default function PetMarket() {
   return (
     <div style={{ minHeight:"100vh", background:"var(--sand)" }}>
       <style>{CSS}</style>
+
+      {/* NAVBAR */}
       <nav style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", position:"sticky", top:0, zIndex:100, boxShadow:"0 1px 12px rgba(44,80,58,0.07)" }}>
         <div style={{ maxWidth:1180, margin:"0 auto", padding:"0 24px", display:"flex", alignItems:"center", height:68, gap:18 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0, marginRight:4 }}>
@@ -398,18 +411,52 @@ export default function PetMarket() {
         </div>
       </nav>
 
-      <div style={{ background:"linear-gradient(105deg, var(--green) 0%, #3a7d60 100%)", padding:"36px 24px" }}>
+      {/* HERO + SLUŽBY */}
+      <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)", padding:"32px 24px 0" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
-          <h1 style={{ color:"var(--white)", fontSize:"clamp(1.5rem,3vw,2.2rem)", marginBottom:8, letterSpacing:"-0.02em" }}>Vše pro tvého mazlíčka — z druhé ruky</h1>
-          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.</p>
-          <div style={{ display:"flex", gap:20, flexWrap:"wrap" }}>
-            {[["🛍️", `${items.length} inzerátů`], ["🐾", "4 kategorie"], ["🏙️", "Celá ČR"]].map(([icon,label]) => (
-              <div key={label} style={{ background:"rgba(255,255,255,0.15)", borderRadius:10, padding:"8px 16px", display:"flex", alignItems:"center", gap:7, color:"var(--white)", fontSize:"0.85rem", fontWeight:600, border:"1px solid rgba(255,255,255,0.2)" }}>{icon} {label}</div>
+          <h1 style={{ color:"var(--white)", fontSize:"clamp(1.5rem,3vw,2.2rem)", marginBottom:6, letterSpacing:"-0.02em" }}>
+            Vše pro tvého mazlíčka — z druhé ruky
+          </h1>
+          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
+            Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.
+          </p>
+
+          {/* Navigace služeb */}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:0, paddingBottom:0 }}>
+            {SERVICES.map(service => (
+              <button
+                key={service.id}
+                className={`service-btn ${activeService === service.id ? "active" : ""}`}
+                onClick={() => handleServiceClick(service)}
+                style={{
+                  background: activeService === service.id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
+                  color: "#fff",
+                  borderBottom: activeService === service.id ? "3px solid #fff" : "3px solid transparent",
+                  borderRadius: "12px 12px 0 0",
+                  padding: "12px 16px 14px",
+                  minWidth: 80,
+                }}
+              >
+                <span style={{ fontSize:"1.6rem" }}>{service.icon}</span>
+                <span style={{ fontSize:"0.72rem", fontWeight:600, textAlign:"center", lineHeight:1.2 }}>{service.label}</span>
+              </button>
             ))}
           </div>
         </div>
       </div>
 
+      {/* STATISTIKY */}
+      <div style={{ background:"var(--green)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"10px 24px" }}>
+        <div style={{ maxWidth:1180, margin:"0 auto", display:"flex", gap:20, flexWrap:"wrap" }}>
+          {[["🛍️", `${items.length} inzerátů`], ["🐾", "4 kategorie"], ["🏙️", "Celá ČR"]].map(([icon,label]) => (
+            <div key={label} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"5px 12px", display:"flex", alignItems:"center", gap:6, color:"var(--white)", fontSize:"0.8rem", fontWeight:600 }}>
+              {icon} {label}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FILTRY */}
       <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"16px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
@@ -433,6 +480,7 @@ export default function PetMarket() {
         </div>
       </div>
 
+      {/* GRID */}
       <main style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 48px" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"70px 20px", color:"var(--text-light)" }}>
@@ -448,11 +496,13 @@ export default function PetMarket() {
         )}
       </main>
 
+      {/* MODALY */}
       {selected && <DetailModal item={selected} onClose={() => setSelected(null)} onChat={item => { setSelected(null); setChatItem(item); }} onSave={handleSave} user={user} onAuthRequired={() => setShowAuth(true)} />}
       {chatItem && <ChatModal item={chatItem} onClose={() => setChatItem(null)} />}
       {showAdd && <AddModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
       {showProfile && user && <ProfilePage onClose={() => setShowProfile(false)} />}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />}
+      {comingSoon && <ComingSoonModal service={comingSoon} onClose={() => setComingSoon(null)} />}
 
       {toast && (
         <div style={{ position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", background:"var(--text)", color:"var(--white)", borderRadius:30, padding:"12px 26px", fontSize:"0.88rem", fontWeight:600, zIndex:300, whiteSpace:"nowrap", boxShadow:"0 8px 28px rgba(0,0,0,0.2)", animation:"toastIn 0.3s ease" }}>{toast}</div>
