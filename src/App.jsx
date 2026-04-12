@@ -389,8 +389,8 @@ export default function PetMarket() {
             ) : (
               <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => setShowAuth(true)}>Přihlásit se</button>
             )}
-            <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>+ Prodat</button>
-          </div>
+<button className="btn-secondary" onClick={() => window.location.href = "/partneri"} style={{ padding:"10px 20px" }}>🤝 Staň se partnerem</button>
+<button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>+ Prodat</button>          </div>
         </div>
       </nav>
 
