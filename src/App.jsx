@@ -56,34 +56,34 @@ const CSS = `
   .label { font-size: 0.75rem; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
   .overlay { position: fixed; inset: 0; background: rgba(28,43,34,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; backdrop-filter: blur(5px); }
   .modal { background: var(--white); border-radius: 22px; max-width: 500px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: var(--shadow-lg); animation: popIn 0.25s ease; }
-  .service-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; border-radius: 14px; border: none; cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif; min-width: 90px; }
-  .service-btn:hover { transform: translateY(-3px); }
-  .service-btn.active { background: rgba(255,255,255,0.25) !important; }
+  .service-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 14px 12px; border-radius: 12px 12px 0 0; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif; color: rgba(255,255,255,0.8); background: transparent; min-width: 80px; }
+  .service-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .service-btn.active { background: rgba(255,255,255,0.18); color: #fff; border-bottom-color: #fff; }
 `;
 
 const LISTINGS = [
-  { id:1, title:"Pelíšek M/L — béžový plyš", price:340, cat:"vybaveni", animal:"pes", emoji:"🛏️", cond:"dobrý", city:"Praha", seller:"Jana K.", desc:"Pohodlný plyšový pelíšek 80×60 cm, praný, málo používaný.", saved:false, time:"2 dny" },
-  { id:2, title:"Klec pro křečka + příslušenství", price:190, cat:"vybaveni", animal:"hlodavec", emoji:"🏠", cond:"dobrý", city:"Brno", seller:"Tomáš M.", desc:"Kompletní klec včetně kolečka, misky, napáječky.", saved:false, time:"3 dny" },
+  { id:1, title:"Pelíšek M/L — béžový plyš", price:340, cat:"vybaveni", animal:"pes", emoji:"🛏️", cond:"dobrý", city:"Praha", seller:"Jana K.", desc:"Pohodlný plyšový pelíšek 80×60 cm.", saved:false, time:"2 dny" },
+  { id:2, title:"Klec pro křečka + příslušenství", price:190, cat:"vybaveni", animal:"hlodavec", emoji:"🏠", cond:"dobrý", city:"Brno", seller:"Tomáš M.", desc:"Kompletní klec včetně příslušenství.", saved:false, time:"3 dny" },
   { id:3, title:"Zimní bundička — vel. S", price:145, cat:"obleceni", animal:"pes", emoji:"🧥", cond:"jako nový", city:"Ostrava", seller:"Lucie P.", desc:"Teplá zimní bunda, oblečena 3×.", saved:false, time:"5 dní" },
   { id:4, title:"Prémiové granule pro kočky 2 kg", price:175, cat:"krmivo", animal:"kočka", emoji:"🐟", cond:"nový", city:"Praha", seller:"Martin V.", desc:"Neotevřené granule pro dospělé kočky.", saved:false, time:"1 den" },
   { id:5, title:"Škrabadlo s boudičkou 120 cm", price:390, cat:"vybaveni", animal:"kočka", emoji:"🌴", cond:"dobrý", city:"Plzeň", seller:"Eva S.", desc:"Stabilní škrabadlo s houpátkem.", saved:false, time:"4 dny" },
-  { id:6, title:"Kožené vodítko + obojek — sada", price:115, cat:"vybaveni", animal:"pes", emoji:"🔗", cond:"jako nový", city:"Liberec", seller:"Petr N.", desc:"Černá pravá kůže, obvod krku 35–45 cm.", saved:false, time:"6 dní" },
-  { id:7, title:"Přírodní pamlsky pro psy 500 g", price:85, cat:"krmivo", animal:"pes", emoji:"🦴", cond:"nový", city:"Olomouc", seller:"Alena B.", desc:"Sušené přírodní pamlsky bez konzervantů.", saved:false, time:"2 dny" },
+  { id:6, title:"Kožené vodítko + obojek — sada", price:115, cat:"vybaveni", animal:"pes", emoji:"🔗", cond:"jako nový", city:"Liberec", seller:"Petr N.", desc:"Černá pravá kůže, obvod 35–45 cm.", saved:false, time:"6 dní" },
+  { id:7, title:"Přírodní pamlsky pro psy 500 g", price:85, cat:"krmivo", animal:"pes", emoji:"🦴", cond:"nový", city:"Olomouc", seller:"Alena B.", desc:"Sušené přírodní pamlsky.", saved:false, time:"2 dny" },
   { id:8, title:"Přepravní box na kočku", price:270, cat:"vybaveni", animal:"kočka", emoji:"📦", cond:"dobrý", city:"Č. Budějovice", seller:"Roman H.", desc:"Plastový přepravní box 50×30×30 cm.", saved:false, time:"1 týden" },
   { id:9, title:"Hračky — sada 5 myšiček", price:55, cat:"vybaveni", animal:"kočka", emoji:"🐭", cond:"nový", city:"Praha", seller:"Jana K.", desc:"Set 5 plyšových myšiček s catnipem.", saved:false, time:"3 dny" },
-  { id:10, title:"Fotbalový dres pro psa — M", price:75, cat:"obleceni", animal:"pes", emoji:"⚽", cond:"jako nový", city:"Brno", seller:"Monika T.", desc:"Roztomilý fotbalový dres velikost M.", saved:false, time:"5 dní" },
-  { id:11, title:"Akvárium 60L komplet", price:650, cat:"vybaveni", animal:"ryba", emoji:"🐠", cond:"dobrý", city:"Praha", seller:"Ondřej K.", desc:"Akvárium 60 litrů, filtrace, osvětlení LED.", saved:false, time:"2 dny" },
-  { id:12, title:"Vitamíny pro hlodavce 100ml", price:70, cat:"krmivo", animal:"hlodavec", emoji:"💊", cond:"nový", city:"Hradec Králové", seller:"Tereza L.", desc:"Kapkové vitamíny do vody, neotevřeno.", saved:false, time:"4 dny" },
+  { id:10, title:"Fotbalový dres pro psa — M", price:75, cat:"obleceni", animal:"pes", emoji:"⚽", cond:"jako nový", city:"Brno", seller:"Monika T.", desc:"Roztomilý fotbalový dres M.", saved:false, time:"5 dní" },
+  { id:11, title:"Akvárium 60L komplet", price:650, cat:"vybaveni", animal:"ryba", emoji:"🐠", cond:"dobrý", city:"Praha", seller:"Ondřej K.", desc:"Akvárium 60 litrů, filtrace, LED.", saved:false, time:"2 dny" },
+  { id:12, title:"Vitamíny pro hlodavce 100ml", price:70, cat:"krmivo", animal:"hlodavec", emoji:"💊", cond:"nový", city:"Hradec Králové", seller:"Tereza L.", desc:"Kapkové vitamíny do vody.", saved:false, time:"4 dny" },
 ];
 
 const SERVICES = [
-  { id: "bazar", label: "Bazar věcí", icon: "🛍️", active: true },
-  { id: "veterinar", label: "Veterinární kliniky", icon: "🩺", active: false },
-  { id: "hlidani", label: "Hlídání", icon: "🏠", active: false },
-  { id: "venceni", label: "Venčení", icon: "🦮", active: false },
-  { id: "hotel", label: "Psí hotely", icon: "🏨", active: false },
-  { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️", active: false },
-  { id: "partneri", label: "Partnerští prodejci", icon: "🤝", active: false },
+  { id: "bazar", label: "Bazar věcí", icon: "🛍️" },
+  { id: "veterinar", label: "Veterinární kliniky", icon: "🩺" },
+  { id: "hlidani", label: "Hlídání", icon: "🏠" },
+  { id: "venceni", label: "Venčení", icon: "🦮" },
+  { id: "hotel", label: "Psí hotely", icon: "🏨" },
+  { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️" },
+  { id: "partneri", label: "Partnerští prodejci", icon: "🤝" },
 ];
 
 const CATS = [
@@ -119,11 +119,8 @@ function Card({ item, onOpen, onSave, delay }) {
         {item.foto_urls && item.foto_urls.length > 0
           ? <img src={item.foto_urls[0]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
           : (item.emoji || "🐾")}
-        {item.discount_percent && (
-          <div style={{ position:"absolute", top:10, left:10, background:"#e07b39", color:"#fff", borderRadius:20, padding:"3px 10px", fontSize:"0.75rem", fontWeight:700, zIndex:1 }}>-{item.discount_percent}%</div>
-        )}
-        <button onClick={e => { e.stopPropagation(); onSave(item.id); }}
-          style={{ position:"absolute", top:10, right:10, background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)", border:"none", borderRadius:"50%", width:34, height:34, cursor:"pointer", fontSize:"0.95rem", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 1px 6px rgba(0,0,0,0.12)", transition:"all 0.2s", zIndex:1 }}>
+        {item.discount_percent && <div style={{ position:"absolute", top:10, left:10, background:"#e07b39", color:"#fff", borderRadius:20, padding:"3px 10px", fontSize:"0.75rem", fontWeight:700, zIndex:1 }}>-{item.discount_percent}%</div>}
+        <button onClick={e => { e.stopPropagation(); onSave(item.id); }} style={{ position:"absolute", top:10, right:10, background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)", border:"none", borderRadius:"50%", width:34, height:34, cursor:"pointer", fontSize:"0.95rem", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 1px 6px rgba(0,0,0,0.12)", transition:"all 0.2s", zIndex:1 }}>
           {item.saved ? "♥" : "♡"}
         </button>
       </div>
@@ -196,9 +193,7 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired }) {
           </div>
           <div style={{ display:"flex", gap:10 }}>
             {!isOwner ? (
-              <button className="btn-primary" style={{ flex:1 }} onClick={() => { if (!user) { onClose(); onAuthRequired(); return; } onChat(item); }}>
-                💬 Napsat prodejci
-              </button>
+              <button className="btn-primary" style={{ flex:1 }} onClick={() => { if (!user) { onClose(); onAuthRequired(); return; } onChat(item); }}>💬 Napsat prodejci</button>
             ) : (
               <div style={{ flex:1, background:"var(--green-light)", color:"var(--green)", borderRadius:10, padding:"12px", textAlign:"center", fontSize:"0.9rem", fontWeight:600 }}>📋 Toto je tvůj inzerát</div>
             )}
@@ -352,11 +347,8 @@ export default function PetMarket() {
   }, []);
 
   const handleServiceClick = (service) => {
-    if (service.id === "bazar") {
-      setActiveService("bazar");
-    } else {
-      setComingSoon(service);
-    }
+    if (service.id === "bazar") setActiveService("bazar");
+    else setComingSoon(service);
   };
 
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
@@ -411,45 +403,35 @@ export default function PetMarket() {
         </div>
       </nav>
 
-      {/* HERO + SLUŽBY */}
-      <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)", padding:"32px 24px 0" }}>
-        <div style={{ maxWidth:1180, margin:"0 auto" }}>
-          <h1 style={{ color:"var(--white)", fontSize:"clamp(1.5rem,3vw,2.2rem)", marginBottom:6, letterSpacing:"-0.02em" }}>
+      {/* HERO */}
+      <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)" }}>
+        <div style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 0", textAlign:"center" }}>
+          <h1 style={{ color:"var(--white)", fontSize:"clamp(1.4rem,3vw,2rem)", marginBottom:6, letterSpacing:"-0.02em" }}>
             Vše pro tvého mazlíčka — z druhé ruky
           </h1>
-          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.95rem", marginBottom:24, maxWidth:520 }}>
+          <p style={{ color:"rgba(255,255,255,0.75)", fontSize:"0.9rem", marginBottom:20 }}>
             Kupuj a prodávej použité vybavení, krmivo i oblečení. Šetři peníze, pomáhej přírodě.
           </p>
 
-          {/* Navigace služeb */}
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:0, paddingBottom:0 }}>
+          {/* Menu služeb */}
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
             {SERVICES.map(service => (
               <button
                 key={service.id}
                 className={`service-btn ${activeService === service.id ? "active" : ""}`}
                 onClick={() => handleServiceClick(service)}
-                style={{
-                  background: activeService === service.id ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)",
-                  color: "#fff",
-                  borderBottom: activeService === service.id ? "3px solid #fff" : "3px solid transparent",
-                  borderRadius: "12px 12px 0 0",
-                  padding: "12px 16px 14px",
-                  minWidth: 80,
-                }}
               >
-                <span style={{ fontSize:"1.6rem" }}>{service.icon}</span>
-                <span style={{ fontSize:"0.72rem", fontWeight:600, textAlign:"center", lineHeight:1.2 }}>{service.label}</span>
+                <span style={{ fontSize:"1.5rem" }}>{service.icon}</span>
+                <span style={{ fontSize:"0.7rem", fontWeight:600, textAlign:"center", lineHeight:1.2, maxWidth:80 }}>{service.label}</span>
               </button>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* STATISTIKY */}
-      <div style={{ background:"var(--green)", borderBottom:"1px solid rgba(255,255,255,0.1)", padding:"10px 24px" }}>
-        <div style={{ maxWidth:1180, margin:"0 auto", display:"flex", gap:20, flexWrap:"wrap" }}>
+        {/* Statistiky */}
+        <div style={{ maxWidth:1180, margin:"0 auto", padding:"10px 24px", display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap" }}>
           {[["🛍️", `${items.length} inzerátů`], ["🐾", "4 kategorie"], ["🏙️", "Celá ČR"]].map(([icon,label]) => (
-            <div key={label} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"5px 12px", display:"flex", alignItems:"center", gap:6, color:"var(--white)", fontSize:"0.8rem", fontWeight:600 }}>
+            <div key={label} style={{ background:"rgba(255,255,255,0.12)", borderRadius:8, padding:"4px 12px", display:"flex", alignItems:"center", gap:6, color:"var(--white)", fontSize:"0.78rem", fontWeight:600 }}>
               {icon} {label}
             </div>
           ))}
@@ -457,9 +439,9 @@ export default function PetMarket() {
       </div>
 
       {/* FILTRY */}
-      <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"16px 24px" }}>
+      <div style={{ background:"var(--white)", borderBottom:"1px solid var(--sand-dark)", padding:"14px 24px" }}>
         <div style={{ maxWidth:1180, margin:"0 auto" }}>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:10 }}>
             {CATS.map(c => <button key={c.id} className={`pill ${cat===c.id ? "pill-active" : "pill-outline"}`} onClick={() => setCat(c.id)} style={{ fontSize:"0.85rem", padding:"7px 16px" }}>{c.icon} {c.label}</button>)}
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -481,7 +463,7 @@ export default function PetMarket() {
       </div>
 
       {/* GRID */}
-      <main style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 48px" }}>
+      <main style={{ maxWidth:1180, margin:"0 auto", padding:"24px 24px 48px" }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign:"center", padding:"70px 20px", color:"var(--text-light)" }}>
             <div style={{ fontSize:"3.5rem", marginBottom:16 }}>🔍</div>
