@@ -45,8 +45,7 @@ function filterMessage(text) {
   return filtered;
 }
 
-// ─── INBOX CHAT ────────────────────────────────────────────────────────────────
-function InboxChat({ conv, user, onClose }) {
+function InboxChat({ conv, user, onClose, onRead }) {
   const { profile } = useAuth();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -56,12 +55,16 @@ function InboxChat({ conv, user, onClose }) {
 
   useEffect(() => {
     fetchMessages();
+    markAsRead();
     const channel = supabase
       .channel("inbox-" + conv.inzerat_id + "-" + user.id)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `inzerat_id=eq.${conv.inzerat_id}` }, (payload) => {
         const msg = payload.new;
         if (msg.sender_id === user.id || msg.receiver_id === user.id) {
           setMessages(prev => [...prev, msg]);
+          if (msg.receiver_id === user.id) {
+            supabase.from("messages").update({ read: true }).eq("id", msg.id);
+          }
         }
       })
       .subscribe();
@@ -69,6 +72,15 @@ function InboxChat({ conv, user, onClose }) {
   }, [conv]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const markAsRead = async () => {
+    await supabase.from("messages")
+      .update({ read: true })
+      .eq("inzerat_id", conv.inzerat_id)
+      .eq("receiver_id", user.id)
+      .eq("read", false);
+    onRead();
+  };
 
   const fetchMessages = async () => {
     const { data } = await supabase.from("messages").select("*")
@@ -138,7 +150,6 @@ function InboxChat({ conv, user, onClose }) {
   );
 }
 
-// ─── INZERÁT DETAIL (úprava + fotky + smazání + views) ────────────────────────
 function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
   const { user } = useAuth();
   const [fotoIdx, setFotoIdx] = useState(0);
@@ -147,27 +158,19 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [slevaPercent, setSlevaPercent] = useState(item.discount_percent || "");
   const [form, setForm] = useState({
-    title: item.title || "",
-    price: item.price || "",
-    city: item.city || "",
-    description: item.description || "",
-    category: item.category || "",
-    animal: item.animal || "",
-    condition: item.condition || "Dobrý",
+    title: item.title || "", price: item.price || "", city: item.city || "",
+    description: item.description || "", category: item.category || "",
+    animal: item.animal || "", condition: item.condition || "Dobrý",
   });
-
-  // Fotky při editaci
   const [existingFotos, setExistingFotos] = useState(item.foto_urls || []);
   const [newFotky, setNewFotky] = useState([]);
   const [newFotkyPreviews, setNewFotkyPreviews] = useState([]);
-
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [msg, setMsg] = useState("");
 
   const fotos = item.foto_urls && item.foto_urls.length > 0 ? item.foto_urls : null;
   const discountedPrice = item.discount_percent ? Math.round(item.price * (1 - item.discount_percent / 100)) : null;
-
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
 
@@ -184,30 +187,18 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
 
   const handleNewFotky = async (e) => {
     const files = Array.from(e.target.files);
-    const totalAfter = existingFotos.length + newFotky.length + files.length;
-    if (totalAfter > 5) { setMsg("⚠️ Max. 5 fotek celkem."); return; }
+    if (existingFotos.length + newFotky.length + files.length > 5) { setMsg("⚠️ Max. 5 fotek celkem."); return; }
     const compressed = await Promise.all(files.map(compressImage));
     const updated = [...newFotky, ...compressed];
-    setNewFotky(updated);
-    setNewFotkyPreviews(updated.map(f => URL.createObjectURL(f)));
+    setNewFotky(updated); setNewFotkyPreviews(updated.map(f => URL.createObjectURL(f)));
   };
 
-  const removeExistingFoto = (idx) => {
-    setExistingFotos(prev => prev.filter((_, i) => i !== idx));
-    if (fotoIdx >= existingFotos.length - 1) setFotoIdx(0);
-  };
-
-  const removeNewFoto = (idx) => {
-    const nf = newFotky.filter((_, i) => i !== idx);
-    setNewFotky(nf);
-    setNewFotkyPreviews(nf.map(f => URL.createObjectURL(f)));
-  };
+  const removeExistingFoto = (idx) => { setExistingFotos(prev => prev.filter((_, i) => i !== idx)); if (fotoIdx >= existingFotos.length - 1) setFotoIdx(0); };
+  const removeNewFoto = (idx) => { const nf = newFotky.filter((_, i) => i !== idx); setNewFotky(nf); setNewFotkyPreviews(nf.map(f => URL.createObjectURL(f))); };
 
   const handleSave = async () => {
-    setSaving(true);
-    setMsg("");
+    setSaving(true); setMsg("");
     try {
-      // Upload nových fotek
       const uploadedUrls = [];
       for (const fotka of newFotky) {
         const fileName = `${user.id}/${Date.now()}_${fotka.name}`;
@@ -216,29 +207,11 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         uploadedUrls.push(urlData.publicUrl);
       }
-      const finalFotos = [...existingFotos, ...uploadedUrls];
-
-      const { error } = await supabase.from("inzeraty").update({
-        title: form.title,
-        price: parseInt(form.price),
-        city: form.city,
-        description: form.description,
-        category: form.category,
-        animal: form.animal,
-        condition: form.condition,
-        foto_urls: finalFotos,
-      }).eq("id", item.id);
-
+      const { error } = await supabase.from("inzeraty").update({ title: form.title, price: parseInt(form.price), city: form.city, description: form.description, category: form.category, animal: form.animal, condition: form.condition, foto_urls: [...existingFotos, ...uploadedUrls] }).eq("id", item.id);
       if (error) throw error;
-      setMsg("✅ Uloženo!");
-      setEditing(false);
-      setNewFotky([]);
-      setNewFotkyPreviews([]);
-      onUpdated();
+      setMsg("✅ Uloženo!"); setEditing(false); setNewFotky([]); setNewFotkyPreviews([]); onUpdated();
       setTimeout(() => setMsg(""), 2500);
-    } catch (err) {
-      setMsg("❌ Chyba: " + err.message);
-    }
+    } catch (err) { setMsg("❌ Chyba: " + err.message); }
     setSaving(false);
   };
 
@@ -262,21 +235,13 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
     setDeleting(true);
     const { error } = await supabase.from("inzeraty").delete().eq("id", item.id);
     setDeleting(false);
-    if (error) { setMsg("❌ Chybu při mazání: " + error.message); setShowDeleteConfirm(false); return; }
-    onDeleted(item.id);
-    onClose();
+    if (error) { setMsg("❌ Chyba: " + error.message); setShowDeleteConfirm(false); return; }
+    onDeleted(item.id); onClose();
   };
-
-  const allFotoPreviewsForEdit = [
-    ...existingFotos.map(url => ({ type: "existing", src: url })),
-    ...newFotkyPreviews.map(url => ({ type: "new", src: url })),
-  ];
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, maxWidth: 540, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(44,80,58,0.14)" }}>
-
-        {/* Foto náhled */}
         <div style={{ height: 280, background: "linear-gradient(145deg, #f2faf6, #f7f4ef)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
           {fotos ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: "5rem" }}>🐾</span>}
           {fotos && fotos.length > 1 && <>
@@ -286,7 +251,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
           {item.discount_percent && <div style={{ position: "absolute", top: 14, left: 14, background: "#e07b39", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: "0.85rem", fontWeight: 700 }}>-{item.discount_percent}%</div>}
           <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "50%", width: 38, height: 38, cursor: "pointer", fontSize: "1.1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
-
         <div style={{ padding: "24px 26px 28px" }}>
           {!editing ? (
             <>
@@ -294,7 +258,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.25rem", color: "#1c2b22" }}>{item.title}</h2>
                 <CondBadge cond={item.condition} />
               </div>
-
               <div style={{ marginBottom: 14 }}>
                 {discountedPrice ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -304,33 +267,18 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                   </div>
                 ) : <div style={{ fontSize: "2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{item.price} Kč</div>}
               </div>
-
               {item.description && <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.65, marginBottom: 18 }}>{item.description}</p>}
-
-              {/* Tagy včetně views */}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-                {[
-                  `📍 ${item.city}`,
-                  `🏷️ ${item.category || "—"}`,
-                  `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`,
-                  item.views > 0 ? `👁 ${item.views} zobrazení` : "👁 0 zobrazení",
-                ].map(tag => (
+                {[`📍 ${item.city}`, `🏷️ ${item.category || "—"}`, `🕐 ${item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}`, item.views > 0 ? `👁 ${item.views} zobrazení` : "👁 0 zobrazení"].map(tag => (
                   <span key={tag} style={{ background: tag.includes("👁") ? "#e8f5ef" : "#f7f4ef", border: `1px solid ${tag.includes("👁") ? "#b7d9c7" : "#ede8e0"}`, borderRadius: 20, padding: "5px 12px", fontSize: "0.78rem", color: tag.includes("👁") ? "#2d6a4f" : "#4a5e52", fontWeight: tag.includes("👁") ? 700 : 500 }}>{tag}</span>
                 ))}
               </div>
-
               {msg && <div style={{ marginBottom: 12, fontSize: "0.85rem", color: msg.includes("❌") || msg.includes("⚠️") ? "#b91c1c" : "#166534" }}>{msg}</div>}
-
-              {/* Akční tlačítka */}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                 <button onClick={() => { setEditing(true); setExistingFotos(item.foto_urls || []); setNewFotky([]); setNewFotkyPreviews([]); }} style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✏️ Upravit</button>
                 <button onClick={() => setShowSleva(!showSleva)} style={{ flex: 1, background: "#fff", color: "#e07b39", border: "2px solid #e07b39", borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🏷️ {item.discount_percent ? "Upravit slevu" : "Přidat slevu"}</button>
               </div>
-
-              {item.discount_percent && (
-                <button onClick={handleRemoveSleva} disabled={saving} style={{ marginBottom: 10, width: "100%", background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "9px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Odebrat slevu</button>
-              )}
-
+              {item.discount_percent && <button onClick={handleRemoveSleva} disabled={saving} style={{ marginBottom: 10, width: "100%", background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "9px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Odebrat slevu</button>}
               {showSleva && (
                 <div style={{ marginBottom: 12, background: "#fdf0e6", borderRadius: 12, padding: "16px" }}>
                   <label style={labelStyle}>Sleva v % (1–90)</label>
@@ -341,14 +289,12 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                   {slevaPercent && item.price && <div style={{ marginTop: 8, fontSize: "0.85rem", color: "#e07b39", fontWeight: 600 }}>Nová cena: {Math.round(item.price * (1 - parseInt(slevaPercent || 0) / 100))} Kč</div>}
                 </div>
               )}
-
-              {/* Smazání */}
               {!showDeleteConfirm ? (
                 <button onClick={() => setShowDeleteConfirm(true)} style={{ width: "100%", background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "10px", fontSize: "0.88rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🗑️ Smazat inzerát</button>
               ) : (
                 <div style={{ background: "#fce4ec", borderRadius: 12, padding: "16px", border: "1px solid #f48fb1" }}>
                   <div style={{ fontWeight: 600, color: "#b91c1c", marginBottom: 8, fontSize: "0.9rem" }}>⚠️ Opravdu chceš smazat tento inzerát?</div>
-                  <div style={{ fontSize: "0.82rem", color: "#880e4f", marginBottom: 14 }}>Tato akce je nevratná. Inzerát bude trvale odstraněn.</div>
+                  <div style={{ fontSize: "0.82rem", color: "#880e4f", marginBottom: 14 }}>Tato akce je nevratná.</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button onClick={handleDelete} disabled={deleting} style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 10, padding: "10px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{deleting ? "Mažu..." : "Ano, smazat"}</button>
                     <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, background: "#fff", color: "#4a5e52", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px", fontSize: "0.88rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zrušit</button>
@@ -360,12 +306,9 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
             <>
               <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 20 }}>Upravit inzerát</h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                {/* ─── SPRÁVA FOTEK ─── */}
                 <div>
                   <label style={labelStyle}>Fotky ({existingFotos.length + newFotky.length}/5)</label>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                    {/* Existující fotky */}
                     {existingFotos.map((src, i) => (
                       <div key={"ex-" + i} style={{ position: "relative", width: 80, height: 80 }}>
                         <img src={src} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 10, border: "2px solid #b7d9c7" }} />
@@ -373,7 +316,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                         <div style={{ position: "absolute", bottom: 2, left: 2, background: "rgba(45,106,79,0.85)", borderRadius: 4, padding: "1px 5px", fontSize: "0.55rem", color: "#fff", fontWeight: 700 }}>stávající</div>
                       </div>
                     ))}
-                    {/* Nové fotky */}
                     {newFotkyPreviews.map((src, i) => (
                       <div key={"new-" + i} style={{ position: "relative", width: 80, height: 80 }}>
                         <img src={src} alt="" style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 10, border: "2px solid #e07b39" }} />
@@ -381,7 +323,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                         <div style={{ position: "absolute", bottom: 2, left: 2, background: "rgba(224,123,57,0.85)", borderRadius: 4, padding: "1px 5px", fontSize: "0.55rem", color: "#fff", fontWeight: 700 }}>nová</div>
                       </div>
                     ))}
-                    {/* Přidat fotku */}
                     {existingFotos.length + newFotky.length < 5 && (
                       <label style={{ width: 80, height: 80, borderRadius: 10, border: "2px dashed #b7d9c7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8a9e92", fontSize: "0.75rem", background: "#f7f4ef", gap: 4 }}>
                         <span style={{ fontSize: "1.5rem" }}>📷</span>Přidat
@@ -389,9 +330,8 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                       </label>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.72rem", color: "#8a9e92" }}>Zelený rámeček = stávající foto, oranžový = nově přidané</div>
+                  <div style={{ fontSize: "0.72rem", color: "#8a9e92" }}>Zelený rámeček = stávající, oranžový = nové</div>
                 </div>
-
                 <div><label style={labelStyle}>Název *</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} style={inputStyle} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div><label style={labelStyle}>Cena (Kč) *</label><input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={inputStyle} /></div>
@@ -403,7 +343,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
                   <div><label style={labelStyle}>Stav</label><select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>{STAVY.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                 </div>
                 <div><label style={labelStyle}>Popis</label><textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
-
                 {msg && <div style={{ fontSize: "0.85rem", color: msg.includes("❌") || msg.includes("⚠️") ? "#b91c1c" : "#166534" }}>{msg}</div>}
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={handleSave} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "💾 Uložit změny"}</button>
@@ -418,7 +357,6 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
   );
 }
 
-// ─── MINI BAR CHART ────────────────────────────────────────────────────────────
 function MiniBarChart({ data }) {
   const max = Math.max(...data, 1);
   return (
@@ -433,7 +371,6 @@ function MiniBarChart({ data }) {
   );
 }
 
-// ─── HLAVNÍ PROFIL ─────────────────────────────────────────────────────────────
 export default function ProfilePage() {
   const { user, profile, signOut, fetchProfile } = useAuth();
   const navigate = useNavigate();
@@ -447,11 +384,9 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState("");
   const [selectedInzerat, setSelectedInzerat] = useState(null);
   const [mojeInzeraty, setMojeInzeraty] = useState([]);
-
   const [conversations, setConversations] = useState([]);
   const [activeConv, setActiveConv] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
-
   const [inzeratForm, setInzeratForm] = useState({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
   const [fotky, setFotky] = useState([]);
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
@@ -470,7 +405,6 @@ export default function ProfilePage() {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
     if (!msgs) return;
-
     const convMap = {};
     for (const msg of msgs) {
       const key = msg.inzerat_id;
@@ -481,17 +415,11 @@ export default function ProfilePage() {
       }
       if (!msg.read && msg.receiver_id === user.id) convMap[key].unread++;
     }
-
     const inzeratIds = Object.keys(convMap);
     if (inzeratIds.length > 0) {
       const { data: inzeraty } = await supabase.from("inzeraty").select("id, title, foto_urls").in("id", inzeratIds);
-      if (inzeraty) {
-        inzeraty.forEach(inz => {
-          if (convMap[inz.id]) { convMap[inz.id].inzerat_title = inz.title; convMap[inz.id].inzerat_foto = inz.foto_urls?.[0]; }
-        });
-      }
+      if (inzeraty) inzeraty.forEach(inz => { if (convMap[inz.id]) { convMap[inz.id].inzerat_title = inz.title; convMap[inz.id].inzerat_foto = inz.foto_urls?.[0]; } });
     }
-
     const convList = Object.values(convMap).sort((a, b) => new Date(b.last_time) - new Date(a.last_time));
     setConversations(convList);
     setUnreadCount(convList.reduce((s, c) => s + c.unread, 0));
@@ -572,10 +500,7 @@ export default function ProfilePage() {
     setInzeratSaving(false);
   };
 
-  // Po smazání inzerátu odeber z listu
-  const handleInzeratDeleted = (deletedId) => {
-    setMojeInzeraty(prev => prev.filter(i => i.id !== deletedId));
-  };
+  const handleInzeratDeleted = (deletedId) => { setMojeInzeraty(prev => prev.filter(i => i.id !== deletedId)); };
 
   const roleLabel = { buyer: "🛒 Kupující", seller: "🏪 Prodejce", vet: "🩺 Veterinář" };
   const role = profile?.role || "buyer";
@@ -587,7 +512,6 @@ export default function ProfilePage() {
   return (
     <div style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
-
       <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", gap: 16, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
         <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer" }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
@@ -600,7 +524,6 @@ export default function ProfilePage() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 28 }}>
-        {/* ─── SIDEBAR ─── */}
         <div style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "24px 20px", marginBottom: 12, border: "1px solid #ede8e0", textAlign: "center" }}>
             <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", margin: "0 auto 12px" }}>🐾</div>
@@ -621,10 +544,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ─── HLAVNÍ OBSAH ─── */}
         <div style={{ flex: 1 }}>
-
-          {/* PROFIL */}
           {activeTab === "profil" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -657,7 +577,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* MOJE INZERÁTY */}
           {activeTab === "inzeraty" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -674,31 +593,20 @@ export default function ProfilePage() {
                       onClick={() => setSelectedInzerat(item)}
                       onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
                       onMouseOut={e => e.currentTarget.style.background = "#fff"}>
-                      {/* Náhled foto */}
                       <div style={{ width: 56, height: 56, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0, position: "relative" }}>
                         {item.foto_urls?.[0] ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>🐾</div>}
                         {item.discount_percent && <div style={{ position: "absolute", top: 2, left: 2, background: "#e07b39", color: "#fff", borderRadius: 6, padding: "1px 5px", fontSize: "0.6rem", fontWeight: 700 }}>-{item.discount_percent}%</div>}
                       </div>
-                      {/* Info */}
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
                         <div style={{ fontSize: "0.78rem", color: "#8a9e92", display: "flex", gap: 10, flexWrap: "wrap" }}>
                           <span>📍 {item.city}</span>
                           <span>🕐 {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}</span>
-                          {/* ─── VIEWS COUNTER ─── */}
                           <span style={{ color: "#2d6a4f", fontWeight: 600 }}>👁 {item.views || 0} zobrazení</span>
                         </div>
                       </div>
-                      {/* Cena + stav */}
                       <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        {discounted ? (
-                          <>
-                            <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{discounted} Kč</div>
-                            <div style={{ fontSize: "0.78rem", color: "#8a9e92", textDecoration: "line-through" }}>{item.price} Kč</div>
-                          </>
-                        ) : (
-                          <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>
-                        )}
+                        {discounted ? (<><div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{discounted} Kč</div><div style={{ fontSize: "0.78rem", color: "#8a9e92", textDecoration: "line-through" }}>{item.price} Kč</div></>) : <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>}
                         <CondBadge cond={item.condition} />
                       </div>
                     </div>
@@ -708,7 +616,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* PŘIDAT INZERÁT */}
           {activeTab === "pridat" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat inzerát</h2>
@@ -748,15 +655,10 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* PŘÍJMY */}
           {activeTab === "prijmy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                {[
-                  { label: "Celková hodnota", value: `${mojeInzeraty.reduce((s, i) => s + i.price, 0)} Kč`, icon: "💰" },
-                  { label: "Moje inzeráty", value: mojeInzeraty.length, icon: "📋" },
-                  { label: "Celkem zobrazení", value: mojeInzeraty.reduce((s, i) => s + (i.views || 0), 0), icon: "👁" },
-                ].map(({ label, value, icon }) => (
+                {[{ label: "Celková hodnota", value: `${mojeInzeraty.reduce((s, i) => s + i.price, 0)} Kč`, icon: "💰" }, { label: "Moje inzeráty", value: mojeInzeraty.length, icon: "📋" }, { label: "Celkem zobrazení", value: mojeInzeraty.reduce((s, i) => s + (i.views || 0), 0), icon: "👁" }].map(({ label, value, icon }) => (
                   <div key={label} style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
                     <div style={{ fontSize: "1.8rem", marginBottom: 8 }}>{icon}</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{value}</div>
@@ -769,7 +671,6 @@ export default function ProfilePage() {
                 <div style={{ fontSize: "0.85rem", color: "#8a9e92", marginBottom: 16 }}>Rok 2026</div>
                 <MiniBarChart data={mockPrijmy} />
               </div>
-              {/* Tabulka zobrazení na inzerát */}
               {mojeInzeraty.length > 0 && (
                 <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
                   <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 16 }}>Zobrazení podle inzerátu</h2>
@@ -789,7 +690,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* HODNOCENÍ */}
           {activeTab === "hodnoceni" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
@@ -811,12 +711,16 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* ZPRÁVY */}
           {activeTab === "zpravy" && (
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden", minHeight: 400 }}>
               {activeConv ? (
                 <div style={{ height: 520 }}>
-                  <InboxChat conv={activeConv} user={user} onClose={() => setActiveConv(null)} />
+                  <InboxChat
+                    conv={activeConv}
+                    user={user}
+                    onClose={() => { setActiveConv(null); fetchConversations(); }}
+                    onRead={fetchConversations}
+                  />
                 </div>
               ) : (
                 <>
@@ -856,7 +760,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* HESLO */}
           {activeTab === "heslo" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Změna hesla</h2>
@@ -869,22 +772,16 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* DETAIL INZERÁTU MODAL */}
       {selectedInzerat && (
-        <InzeratDetail
-          item={selectedInzerat}
-          onClose={() => setSelectedInzerat(null)}
-          onDeleted={handleInzeratDeleted}
+        <InzeratDetail item={selectedInzerat} onClose={() => setSelectedInzerat(null)} onDeleted={handleInzeratDeleted}
           onUpdated={async () => {
             await fetchMoje();
             const { data } = await supabase.from("inzeraty").select("*").eq("id", selectedInzerat.id).single();
             if (data) setSelectedInzerat(data);
-          }}
-        />
+          }} />
       )}
     </div>
   );
