@@ -338,6 +338,7 @@ export default function PetMarket() {
     if (service.id === "bazar") setActiveService("bazar");
     else if (service.id === "veterinar") window.location.href = "/veterinari";
     else if (service.id === "hotel") window.location.href = "/hotely";
+    else if (service.id === "hlidani") window.location.href = "/hlidani";
     else if (service.id === "venceni") window.location.href = "/venceni";
     else setComingSoon(service);
   };
