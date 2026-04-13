@@ -336,6 +336,7 @@ export default function PetMarket() {
 
   const handleServiceClick = (service) => {
     if (service.id === "bazar") setActiveService("bazar");
+    else if (service.id === "veterinar") window.location.href = "/veterinari";
     else setComingSoon(service);
   };
 
