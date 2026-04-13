@@ -17,7 +17,7 @@ const PARTNERI = [
     desc: "Nabídněte ubytování pro psy majitelům kteří odjíždí na dovolenou nebo služební cestu.",
     price: "od 399 Kč/měsíc",
     url: "/hotel/registrace",
-available: true,
+    available: true,
   },
   {
     id: "venceni",
@@ -26,7 +26,7 @@ available: true,
     desc: "Nabídněte své služby venčení psů v okolí. Oslovte majitele kteří nemají čas.",
     price: "od 199 Kč/měsíc",
     url: "/vencitel/registrace",
-available: true,
+    available: true,
   },
   {
     id: "prodejce",
@@ -34,8 +34,8 @@ available: true,
     title: "Partnerský prodejce",
     desc: "Prodávejte své produkty pro mazlíčky tisícům zákazníků na Pet Market.",
     price: "od 299 Kč/měsíc",
-    url: null,
-    available: false,
+    url: "/prodejce/registrace",
+    available: true,
   },
   {
     id: "pojistovna",
@@ -62,13 +62,11 @@ export default function PartneriPage() {
         </button>
       </nav>
 
-      {/* HERO */}
       <div style={{ background: "linear-gradient(135deg, #2d6a4f 0%, #3a7d60 100%)", padding: "60px 24px", textAlign: "center" }}>
         <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "clamp(1.8rem, 4vw, 2.6rem)", color: "#fff", marginBottom: 16, letterSpacing: "-0.02em" }}>Staň se partnerem Pet Market</h1>
         <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "1rem", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>Oslovte tisíce majitelů mazlíčků kteří hledají právě vaše služby. Vyberte typ partnerství který vám nejlépe sedí.</p>
       </div>
 
-      {/* KARTY */}
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 20 }}>
           {PARTNERI.map(p => (
@@ -93,7 +91,6 @@ export default function PartneriPage() {
           ))}
         </div>
 
-        {/* INFO SEKCE */}
         <div style={{ marginTop: 48, background: "#fff", borderRadius: 18, padding: "32px", border: "1px solid #ede8e0" }}>
           <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 20 }}>Jak to funguje?</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 20 }}>
