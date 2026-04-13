@@ -11,6 +11,7 @@ import ProdejceRegister from './ProdejceRegister.jsx'
 import PartneriPage from './PartneriPage.jsx'
 import AdminPage from './AdminPage.jsx'
 import VeterinariPage from './VeterinariPage.jsx'
+import HotelyPage from './HotelyPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/partneri" element={<PartneriPage />} />
           <Route path="/admin-x7k9p2" element={<AdminPage />} />
           <Route path="/veterinari" element={<VeterinariPage />} />
+          <Route path="/hotely" element={<HotelyPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
