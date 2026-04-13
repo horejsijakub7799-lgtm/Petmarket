@@ -10,6 +10,7 @@ import VencitelRegister from './VencitelRegister.jsx'
 import ProdejceRegister from './ProdejceRegister.jsx'
 import PartneriPage from './PartneriPage.jsx'
 import AdminPage from './AdminPage.jsx'
+import VeterinariPage from './VeterinariPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/prodejce/registrace" element={<ProdejceRegister />} />
           <Route path="/partneri" element={<PartneriPage />} />
           <Route path="/admin-x7k9p2" element={<AdminPage />} />
+          <Route path="/veterinari" element={<VeterinariPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
