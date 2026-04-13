@@ -24,7 +24,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/vencitel/registrace" element={<VencitelRegister />} />
           <Route path="/prodejce/registrace" element={<ProdejceRegister />} />
           <Route path="/partneri" element={<PartneriPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin-x7k9p2" element={<AdminPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
