@@ -2,14 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
-import ProductAdd from "./ProductAdd";
 
 const SELLER_MENU = [
   { id: "profil", label: "Profil", icon: "👤" },
   { id: "inzeraty", label: "Moje inzeráty", icon: "📋" },
   { id: "pridat", label: "Přidat inzerát", icon: "➕" },
-  { id: "produkty", label: "Moje produkty", icon: "🛍️" },
-  { id: "pridat_produkt", label: "Přidat produkt", icon: "📦" },
   { id: "prijmy", label: "Příjmy & statistiky", icon: "📊" },
   { id: "hodnoceni", label: "Hodnocení", icon: "⭐" },
   { id: "zpravy", label: "Zprávy", icon: "💬" },
@@ -395,19 +392,11 @@ export default function ProfilePage() {
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
   const [inzeratSaving, setInzeratSaving] = useState(false);
   const [inzeratMsg, setInzeratMsg] = useState("");
-  const [mojeProducty, setMojeProducty] = useState([]);
-  const [showProductAdd, setShowProductAdd] = useState(false);
 
   const fetchMoje = async () => {
     if (!user) return;
     const { data } = await supabase.from("inzeraty").select("*").eq("seller_id", user.id).order("created_at", { ascending: false });
     if (data) setMojeInzeraty(data);
-  };
-
-  const fetchMojeProducty = async () => {
-    if (!user) return;
-    const { data } = await supabase.from("products").select("*").eq("seller_id", user.id).order("created_at", { ascending: false });
-    if (data) setMojeProducty(data);
   };
 
   const fetchConversations = async () => {
@@ -436,7 +425,7 @@ export default function ProfilePage() {
     setUnreadCount(convList.reduce((s, c) => s + c.unread, 0));
   };
 
-  useEffect(() => { fetchMoje(); fetchConversations(); fetchMojeProducty(); }, [user]);
+  useEffect(() => { fetchMoje(); fetchConversations(); }, [user]);
 
   const mockPrijmy = [0, 0, 145, 0, 340, 115, 0, 0, 0, 0, 0, 0];
   const mockHodnoceni = [
@@ -666,54 +655,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "produkty" && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", margin: 0 }}>Moje produkty</h2>
-                <button onClick={() => setShowProductAdd(true)} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat produkt</button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {mojeProducty.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
-                    <div style={{ fontSize: "2rem", marginBottom: 12 }}>🛍️</div>
-                    <p>Zatím žádné produkty.</p>
-                    <button onClick={() => setShowProductAdd(true)} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 8 }}>Přidat první produkt</button>
-                  </div>
-                ) : mojeProducty.map(item => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", border: "1px solid #ede8e0", borderRadius: 12 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
-                      {item.foto_urls?.[0] ? <img src={item.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>📦</div>}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 4 }}>{item.title}</div>
-                      <div style={{ fontSize: "0.78rem", color: "#8a9e92", display: "flex", gap: 10 }}>
-                        <span>🏷️ {item.category}</span>
-                        <span>📦 Skladem: {item.stock} ks</span>
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1.1rem" }}>{item.price} Kč</div>
-                  </div>
-                ))}
-              </div>
-              {showProductAdd && (
-                <ProductAdd
-                  onClose={() => setShowProductAdd(false)}
-                  onSaved={() => { fetchMojeProducty(); setShowProductAdd(false); }}
-                />
-              )}
-            </div>
-          )}
-
-          {activeTab === "pridat_produkt" && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat produkt</h2>
-              <ProductAdd
-                onClose={() => setActiveTab("produkty")}
-                onSaved={() => { fetchMojeProducty(); setActiveTab("produkty"); }}
-              />
-            </div>
-          )}
-
           {activeTab === "prijmy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -774,12 +715,7 @@ export default function ProfilePage() {
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden", minHeight: 400 }}>
               {activeConv ? (
                 <div style={{ height: 520 }}>
-                  <InboxChat
-                    conv={activeConv}
-                    user={user}
-                    onClose={() => { setActiveConv(null); fetchConversations(); }}
-                    onRead={fetchConversations}
-                  />
+                  <InboxChat conv={activeConv} user={user} onClose={() => { setActiveConv(null); fetchConversations(); }} onRead={fetchConversations} />
                 </div>
               ) : (
                 <>
