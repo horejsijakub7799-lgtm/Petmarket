@@ -16,7 +16,7 @@ const KATEGORIE = ["Krmivo", "Hračky", "Obojky a vodítka", "Pelíšky", "Hygie
 const ZVIRATA = ["Pes", "Kočka", "Hlodavec", "Pták", "Ryba", "Plaz", "Jiné"];
 
 export default function SellerDashboard() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("prehled");
   const [sellerProfile, setSellerProfile] = useState(null);
@@ -24,22 +24,20 @@ export default function SellerDashboard() {
   const [produkty, setProdukty] = useState([]);
   const [objednavky, setObjednavky] = useState([]);
   const [doprava, setDoprava] = useState([]);
-  const [showProductForm, setShowProductForm] = useState(false);
 
-  // Produkt form
   const [productForm, setProductForm] = useState({ title: "", description: "", price: "", stock: 1, category: "", animal: "" });
   const [productPhotos, setProductPhotos] = useState([]);
   const [productSaving, setProductSaving] = useState(false);
   const [productMsg, setProductMsg] = useState("");
 
-  // Doprava form
   const [dopravaNova, setDopravaNova] = useState({ name: "", price: "" });
   const [dopravaSaving, setDopravaSaving] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { navigate("/"); return; }
     fetchSellerProfile();
-  }, [user]);
+  }, [user, authLoading]);
 
   const fetchSellerProfile = async () => {
     setLoading(true);
@@ -152,10 +150,9 @@ export default function SellerDashboard() {
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
-
   const statusColor = { pending: { bg: "#fff8e1", color: "#e65100", label: "Čeká" }, paid: { bg: "#e8f5e9", color: "#1b5e20", label: "Zaplaceno" }, shipped: { bg: "#e3f2fd", color: "#0d47a1", label: "Odesláno" }, delivered: { bg: "#f3e5f5", color: "#4a148c", label: "Doručeno" }, cancelled: { bg: "#fce4ec", color: "#880e4f", label: "Zrušeno" } };
 
-  if (loading) return (
+  if (authLoading || loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ textAlign: "center", color: "#8a9e92" }}>
         <div style={{ fontSize: "2rem", marginBottom: 12 }}>🛍️</div>
@@ -167,7 +164,6 @@ export default function SellerDashboard() {
   return (
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
-
       <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", gap: 16, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
         <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer" }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
@@ -179,10 +175,7 @@ export default function SellerDashboard() {
           <button onClick={handleSignOut} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 8, padding: "7px 14px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Odhlásit</button>
         </div>
       </nav>
-
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 28 }}>
-
-        {/* Sidebar */}
         <div style={{ width: 240, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "20px", marginBottom: 12, border: "1px solid #ede8e0", textAlign: "center" }}>
             <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.6rem", margin: "0 auto 10px" }}>🏪</div>
@@ -203,11 +196,7 @@ export default function SellerDashboard() {
             </button>
           </div>
         </div>
-
-        {/* Obsah */}
         <div style={{ flex: 1 }}>
-
-          {/* PŘEHLED */}
           {activeTab === "prehled" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
@@ -223,7 +212,6 @@ export default function SellerDashboard() {
                   </div>
                 ))}
               </div>
-
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>Poslední objednávky</h2>
                 {objednavky.length === 0 ? (
@@ -247,8 +235,6 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
-
-          {/* PRODUKTY */}
           {activeTab === "produkty" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -288,15 +274,13 @@ export default function SellerDashboard() {
               )}
             </div>
           )}
-
-          {/* PŘIDAT PRODUKT */}
           {activeTab === "pridat" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat produkt</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <div>
                   <label style={labelStyle}>Název produktu *</label>
-                  <input className="w-full" style={inputStyle} value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} placeholder="např. Granule pro psy 5kg" />
+                  <input style={inputStyle} value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} placeholder="např. Granule pro psy 5kg" />
                 </div>
                 <div>
                   <label style={labelStyle}>Popis</label>
@@ -340,8 +324,6 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
-
-          {/* OBJEDNÁVKY */}
           {activeTab === "objednavky" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Objednávky</h2>
@@ -398,13 +380,10 @@ export default function SellerDashboard() {
               )}
             </div>
           )}
-
-          {/* DOPRAVA */}
           {activeTab === "doprava" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>Nastavení dopravy</h2>
               <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Nastav dopravce a ceny které nabízíš zákazníkům. Cena dopravy jde celá tobě.</p>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
                 {doprava.length === 0 ? (
                   <div style={{ textAlign: "center", padding: "20px", color: "#8a9e92", background: "#f7f4ef", borderRadius: 10 }}>Zatím žádní dopravci.</div>
@@ -417,7 +396,6 @@ export default function SellerDashboard() {
                   </div>
                 ))}
               </div>
-
               <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "20px" }}>
                 <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c2b22", marginBottom: 14 }}>Přidat dopravce</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end" }}>
@@ -434,8 +412,6 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
-
-          {/* PROFIL OBCHODU */}
           {activeTab === "profil" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Profil obchodu</h2>
@@ -457,7 +433,6 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
