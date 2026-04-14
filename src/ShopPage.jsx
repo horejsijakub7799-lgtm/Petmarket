@@ -136,7 +136,7 @@ function CartPanel({ cart, onClose, onUpdateQty, onRemove, shippingOptions, user
           buyer_email: form.email,
           buyer_phone: form.phone,
           buyer_address: `${form.address}, ${form.city} ${form.zip}`,
-          shipping_option_id: selectedShipping?.id || null,
+          shipping_option_id: selectedShipping?.id === "osobni" ? null : selectedShipping?.id || null,
           shipping_name: selectedShipping?.name || "Osobní odběr",
           shipping_price: selectedShipping?.price || 0,
           total_products: orderTotal,
