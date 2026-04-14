@@ -15,6 +15,7 @@ import HotelyPage from './HotelyPage.jsx'
 import VenceniPage from './VenceniPage.jsx'
 import HlidaniPage from './HlidaniPage.jsx'
 import SellerDashboard from './SellerDashboard.jsx'
+import ShopPage from './ShopPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -35,6 +36,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/venceni" element={<VenceniPage />} />
           <Route path="/hlidani" element={<HlidaniPage />} />
           <Route path="/seller/dashboard" element={<SellerDashboard />} />
+          <Route path="/shop" element={<ShopPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

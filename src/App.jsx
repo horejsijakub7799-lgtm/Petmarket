@@ -347,7 +347,8 @@ useEffect(() => {
     else if (service.id === "hotel") window.location.href = "/hotely";
     else if (service.id === "hlidani") window.location.href = "/hlidani";
     else if (service.id === "venceni") window.location.href = "/venceni";
-    else setComingSoon(service);
+    else if (service.id === "partneri") window.location.href = "/shop";
+else setComingSoon(service);
   };
 
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
