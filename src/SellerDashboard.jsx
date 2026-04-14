@@ -7,6 +7,7 @@ const SELLER_MENU = [
   { id: "prehled", label: "Přehled", icon: "📊" },
   { id: "produkty", label: "Moje produkty", icon: "🛍️" },
   { id: "pridat", label: "Přidat produkt", icon: "➕" },
+  { id: "import", label: "CSV import", icon: "📥" },
   { id: "objednavky", label: "Objednávky", icon: "📦" },
   { id: "doprava", label: "Nastavení dopravy", icon: "🚚" },
   { id: "profil", label: "Profil obchodu", icon: "🏪" },
@@ -14,6 +15,99 @@ const SELLER_MENU = [
 
 const KATEGORIE = ["Krmivo", "Hračky", "Obojky a vodítka", "Pelíšky", "Hygiena", "Doplňky", "Jiné"];
 const ZVIRATA = ["Pes", "Kočka", "Hlodavec", "Pták", "Ryba", "Plaz", "Jiné"];
+
+function CsvImport({ user, sellerProfile, onSuccess }) {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result.replace(/^\uFEFF/, "");
+      const lines = text.split("\n").filter(l => l.trim());
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+        return { title: cols[0], description: cols[1], price: cols[2], category: cols[3], animal: cols[4], stock: cols[5] };
+      }).filter(r => r.title);
+      setPreview(rows);
+    };
+    reader.readAsText(f, "UTF-8");
+  };
+
+  const handleImport = async () => {
+    if (!preview.length) return;
+    setImporting(true); setMsg("");
+    try {
+      const products = preview.map(r => ({
+        seller_id: user.id,
+        seller_name: sellerProfile?.name || user.email,
+        title: r.title,
+        description: r.description || "",
+        price: parseFloat(r.price) || 0,
+        category: r.category || "Jiné",
+        animal: r.animal || "",
+        stock: parseInt(r.stock) || 0,
+        foto_urls: [],
+        active: true,
+      }));
+      const { error } = await supabase.from("products").insert(products);
+      if (error) throw error;
+      setMsg(`✅ Importováno ${products.length} produktů!`);
+      setFile(null); setPreview([]);
+      setTimeout(() => onSuccess(), 1500);
+    } catch (err) { setMsg("❌ Chyba: " + err.message); }
+    setImporting(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <input type="file" accept=".csv" onChange={handleFile} style={{ ...inputStyle, padding: "8px 14px" }} />
+      </div>
+      {preview.length > 0 && (
+        <div>
+          <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1c2b22", marginBottom: 10 }}>Náhled ({preview.length} produktů):</div>
+          <div style={{ border: "1px solid #ede8e0", borderRadius: 10, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+              <thead>
+                <tr style={{ background: "#f7f4ef" }}>
+                  {["Název", "Cena", "Kategorie", "Zvíře", "Sklad"].map(h => (
+                    <th key={h} style={{ padding: "8px 12px", textAlign: "left", color: "#8a9e92", fontWeight: 600, borderBottom: "1px solid #ede8e0" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.slice(0, 5).map((row, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid #f7f4ef" }}>
+                    <td style={{ padding: "8px 12px", color: "#1c2b22" }}>{row.title}</td>
+                    <td style={{ padding: "8px 12px", color: "#2d6a4f", fontWeight: 600 }}>{row.price} Kč</td>
+                    <td style={{ padding: "8px 12px", color: "#4a5e52" }}>{row.category}</td>
+                    <td style={{ padding: "8px 12px", color: "#4a5e52" }}>{row.animal}</td>
+                    <td style={{ padding: "8px 12px", color: "#4a5e52" }}>{row.stock} ks</td>
+                  </tr>
+                ))}
+                {preview.length > 5 && (
+                  <tr><td colSpan={5} style={{ padding: "8px 12px", color: "#8a9e92", textAlign: "center" }}>... a dalších {preview.length - 5} produktů</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={handleImport} disabled={importing} style={{ marginTop: 14, width: "100%", background: importing ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: importing ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            {importing ? "Importuji..." : `✓ Importovat ${preview.length} produktů`}
+          </button>
+        </div>
+      )}
+      {msg && <div style={{ background: msg.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${msg.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: msg.includes("❌") ? "#880e4f" : "#1b5e20" }}>{msg}</div>}
+    </div>
+  );
+}
 
 export default function SellerDashboard() {
   const { user, profile, signOut, loading: authLoading } = useAuth();
@@ -41,13 +135,7 @@ export default function SellerDashboard() {
 
   const fetchSellerProfile = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("partner_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("type", "seller")
-      .eq("approved", true)
-      .single();
+    const { data } = await supabase.from("partner_profiles").select("*").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single();
     if (!data) { navigate("/partneri"); return; }
     setSellerProfile(data);
     setLoading(false);
@@ -239,7 +327,10 @@ export default function SellerDashboard() {
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", margin: 0 }}>Moje produkty</h2>
-                <button onClick={() => setActiveTab("pridat")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat produkt</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => setActiveTab("import")} style={{ background: "#f7f4ef", color: "#2d6a4f", border: "1.5px solid #b7d9c7", borderRadius: 8, padding: "8px 14px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>📥 CSV import</button>
+                  <button onClick={() => setActiveTab("pridat")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat produkt</button>
+                </div>
               </div>
               {produkty.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
@@ -278,34 +369,20 @@ export default function SellerDashboard() {
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat produkt</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <div>
-                  <label style={labelStyle}>Název produktu *</label>
-                  <input style={inputStyle} value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} placeholder="např. Granule pro psy 5kg" />
-                </div>
-                <div>
-                  <label style={labelStyle}>Popis</label>
-                  <textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} placeholder="Popis produktu..." />
+                <div><label style={labelStyle}>Název produktu *</label><input style={inputStyle} value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} placeholder="např. Granule pro psy 5kg" /></div>
+                <div><label style={labelStyle}>Popis</label><textarea style={{ ...inputStyle, minHeight: 90, resize: "vertical" }} value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} placeholder="Popis produktu..." /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div><label style={labelStyle}>Cena (Kč) *</label><input type="number" style={inputStyle} value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="0" /></div>
+                  <div><label style={labelStyle}>Skladem (ks)</label><input type="number" style={inputStyle} value={productForm.stock} onChange={e => setProductForm(f => ({ ...f, stock: e.target.value }))} min="0" /></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Cena (Kč) *</label>
-                    <input type="number" style={inputStyle} value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="0" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Skladem (ks)</label>
-                    <input type="number" style={inputStyle} value={productForm.stock} onChange={e => setProductForm(f => ({ ...f, stock: e.target.value }))} min="0" />
-                  </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Kategorie *</label>
+                  <div><label style={labelStyle}>Kategorie *</label>
                     <select style={{ ...inputStyle, cursor: "pointer" }} value={productForm.category} onChange={e => setProductForm(f => ({ ...f, category: e.target.value }))}>
                       <option value="">Vyber...</option>
                       {KATEGORIE.map(c => <option key={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label style={labelStyle}>Zvíře</label>
+                  <div><label style={labelStyle}>Zvíře</label>
                     <select style={{ ...inputStyle, cursor: "pointer" }} value={productForm.animal} onChange={e => setProductForm(f => ({ ...f, animal: e.target.value }))}>
                       <option value="">Vyber...</option>
                       {ZVIRATA.map(a => <option key={a}>{a}</option>)}
@@ -322,6 +399,26 @@ export default function SellerDashboard() {
                   {productSaving ? "Ukládám..." : "✓ Přidat produkt"}
                 </button>
               </div>
+            </div>
+          )}
+          {activeTab === "import" && (
+            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
+              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>CSV import produktů</h2>
+              <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Nahraj CSV soubor s produkty a přidej je hromadně do svého obchodu.</p>
+              <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "16px 20px", marginBottom: 20, fontSize: "0.85rem", color: "#2d6a4f" }}>
+                <strong>Formát CSV:</strong> název, popis, cena, kategorie, zvíře, skladem<br />
+                <span style={{ color: "#4a5e52" }}>Kategorie: Krmivo | Hračky | Obojky a vodítka | Pelíšky | Hygiena | Doplňky | Jiné</span><br />
+                <span style={{ color: "#4a5e52" }}>Zvíře: Pes | Kočka | Hlodavec | Pták | Ryba | Plaz | Jiné</span>
+              </div>
+              <button onClick={() => {
+                const csv = "název,popis,cena,kategorie,zvíře,skladem\nGranule pro psy 5kg,Kvalitní granule pro dospělé psy,299,Krmivo,Pes,50\nHračka míček,Gumový míček pro psy,89,Hračky,Pes,30\nPelíšek malý,Měkký pelíšek pro kočky,199,Pelíšky,Kočka,20";
+                const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = "vzor_produkty.csv"; a.click();
+              }} style={{ background: "#f7f4ef", color: "#2d6a4f", border: "1.5px solid #b7d9c7", borderRadius: 10, padding: "10px 20px", fontSize: "0.88rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginBottom: 20, display: "inline-block" }}>
+                ⬇️ Stáhnout vzorový CSV
+              </button>
+              <CsvImport user={user} sellerProfile={sellerProfile} onSuccess={() => { fetchProdukty(); setActiveTab("produkty"); }} />
             </div>
           )}
           {activeTab === "objednavky" && (
@@ -399,14 +496,8 @@ export default function SellerDashboard() {
               <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "20px" }}>
                 <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c2b22", marginBottom: 14 }}>Přidat dopravce</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end" }}>
-                  <div>
-                    <label style={labelStyle}>Název dopravce</label>
-                    <input style={inputStyle} value={dopravaNova.name} onChange={e => setDopravaNova(d => ({ ...d, name: e.target.value }))} placeholder="např. Zásilkovna" />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Cena (Kč)</label>
-                    <input type="number" style={inputStyle} value={dopravaNova.price} onChange={e => setDopravaNova(d => ({ ...d, price: e.target.value }))} placeholder="0" />
-                  </div>
+                  <div><label style={labelStyle}>Název dopravce</label><input style={inputStyle} value={dopravaNova.name} onChange={e => setDopravaNova(d => ({ ...d, name: e.target.value }))} placeholder="např. Zásilkovna" /></div>
+                  <div><label style={labelStyle}>Cena (Kč)</label><input type="number" style={inputStyle} value={dopravaNova.price} onChange={e => setDopravaNova(d => ({ ...d, price: e.target.value }))} placeholder="0" /></div>
                   <button onClick={handleAddDoprava} disabled={dopravaSaving} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Přidat</button>
                 </div>
               </div>
