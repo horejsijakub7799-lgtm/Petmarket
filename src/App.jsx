@@ -317,7 +317,14 @@ export default function PetMarket() {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const { user, profile, signOut } = useAuth();
+const { user, profile, signOut } = useAuth();
+const [isApprovedSeller, setIsApprovedSeller] = useState(false);
+
+useEffect(() => {
+  if (!user) { setIsApprovedSeller(false); return; }
+  supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single()
+    .then(({ data }) => setIsApprovedSeller(!!data));
+}, [user]);  
 
   useEffect(() => {
     const fetchInzeraty = async () => {
@@ -388,6 +395,9 @@ export default function PetMarket() {
             {user ? (
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                 <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => window.location.href = "/profil"}>👤 {userName}</button>
+                {isApprovedSeller && (
+  <button className="btn-secondary" style={{ padding:"8px 16px", borderColor:"var(--green)", color:"var(--green)" }} onClick={() => window.location.href = "/seller/dashboard"}>🏪 Můj obchod</button>
+)}
                 <button className="btn-secondary" style={{ padding:"8px 14px", fontSize:"0.8rem", borderColor:"var(--sand-dark)", color:"var(--text-mid)" }} onClick={signOut}>Odhlásit</button>
               </div>
             ) : (
