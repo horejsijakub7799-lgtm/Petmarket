@@ -194,9 +194,9 @@ function CartPanel({ cart, onClose, onUpdateQty, onRemove, shippingOptions, user
                         <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginBottom: 8 }}>🏪 {item.seller_name}</div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <button onClick={() => onUpdateQty(item.id, item.qty - 1)} style={{ width: 26, height: 26, borderRadius: "50%", border: "1px solid #ede8e0", background: "#fff", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                            <button onClick={() => onUpdateQty(item.id, item.qty - 1)} style={{ width: 26, height: 26, borderRadius: "50%", border: "1px solid #ede8e0", background: "#fff", color: "#1c2b22", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
                             <span style={{ fontSize: "0.88rem", fontWeight: 600, minWidth: 20, textAlign: "center" }}>{item.qty}</span>
-                            <button onClick={() => onUpdateQty(item.id, item.qty + 1)} disabled={item.qty >= item.stock} style={{ width: 26, height: 26, borderRadius: "50%", border: "1px solid #ede8e0", background: "#fff", cursor: item.qty >= item.stock ? "not-allowed" : "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                            <button onClick={() => onUpdateQty(item.id, item.qty + 1)} disabled={item.qty >= item.stock} style={{ width: 26, height: 26, borderRadius: "50%", border: "1px solid #ede8e0", background: "#fff", color: "#1c2b22", cursor: item.qty >= item.stock ? "not-allowed" : "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
                           </div>
                           <span style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "0.95rem" }}>{item.price * item.qty} Kč</span>
                           <button onClick={() => onRemove(item.id)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#b91c1c", fontSize: "0.8rem" }}>🗑️</button>
