@@ -435,16 +435,16 @@ export default function ShopPage() {
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
 
-      <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", gap: 16, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
-        <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer" }}>
+      <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 24px", gap: 12, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
+        <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
           <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.15rem", color: "#1c2b22" }}>Pet Market</span>
         </button>
-        <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ flex: 1, maxWidth: 360, position: "relative" }}>
           <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", opacity: 0.45 }}>🔍</span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat produkty..." style={{ width: "100%", border: "1.5px solid #ede8e0", borderRadius: 30, padding: "9px 14px 9px 38px", fontSize: "0.9rem", outline: "none", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }} />
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
           <button onClick={() => navigate("/")} style={{ background: "#fff", color: "#4a5e52", border: "1.5px solid #ede8e0", borderRadius: 8, padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>← Zpět</button>
           <button onClick={() => setShowCart(true)} style={{ position: "relative", background: cartCount > 0 ? "#2d6a4f" : "#fff", color: cartCount > 0 ? "#fff" : "#4a5e52", border: `1.5px solid ${cartCount > 0 ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 8, padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
             🛒 Košík {cartCount > 0 && <span style={{ background: "#e07b39", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: "0.7rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", marginLeft: 4 }}>{cartCount}</span>}
