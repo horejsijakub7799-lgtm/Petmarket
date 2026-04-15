@@ -17,6 +17,7 @@ import VenceniPage from './VenceniPage.jsx'
 import HlidaniPage from './HlidaniPage.jsx'
 import SellerDashboard from './SellerDashboard.jsx'
 import ShopPage from './ShopPage.jsx'
+import PojisteniPage from './PojisteniPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -37,6 +38,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/hotely" element={<HotelyPage />} />
           <Route path="/venceni" element={<VenceniPage />} />
           <Route path="/hlidani" element={<HlidaniPage />} />
+          <Route path="/pojisteni" element={<PojisteniPage />} />
           <Route path="/seller/dashboard" element={<SellerDashboard />} />
           <Route path="/shop" element={<ShopPage />} />
         </Routes>

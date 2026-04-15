@@ -348,6 +348,7 @@ useEffect(() => {
     else if (service.id === "hlidani") window.location.href = "/hlidani";
     else if (service.id === "venceni") window.location.href = "/venceni";
     else if (service.id === "partneri") window.location.href = "/shop";
+else if (service.id === "pojisteni") window.location.href = "/pojisteni";
 else setComingSoon(service);
   };
 
