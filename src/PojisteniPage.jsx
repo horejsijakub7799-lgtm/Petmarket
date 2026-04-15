@@ -27,6 +27,7 @@ const POJISTOVNY = [
     vyhody: ["Nízké ceny", "Online sjednání", "Rychlé vyřízení", "Psi, kočky i exotická zvířata"],
     barva: "#2d6a4f",
     barva_light: "#e8f5ef",
+    url: "https://www.halali.cz",
     badge: "Nejlevnější",
   },
   {
@@ -71,7 +72,6 @@ export default function PojisteniPage() {
   const [kliknuto, setKliknuto] = useState({});
 
   const handleKlik = async (pojistovna) => {
-    // Uložení kliku do Supabase
     await supabase.from("affiliate_clicks").insert({
       pojistovna: pojistovna.id,
       user_id: user?.id || null,
@@ -80,11 +80,10 @@ export default function PojisteniPage() {
 
     setKliknuto(prev => ({ ...prev, [pojistovna.id]: true }));
 
-    // Přesměrování na web pojišťovny
     if (pojistovna.url) {
-      window.open(pojistovna.url, "_blank");
+      window.location.href = pojistovna.url;
     } else {
-      window.open(`https://www.google.com/search?q=${encodeURIComponent(pojistovna.name + " pojištění mazlíčků")}`, "_blank");
+      window.location.href = `https://www.google.com/search?q=${encodeURIComponent(pojistovna.name + " pojištění mazlíčků")}`;
     }
   };
 
@@ -116,7 +115,6 @@ export default function PojisteniPage() {
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 48 }}>
           {POJISTOVNY.map((p) => (
             <div key={p.id} style={{ background: "#fff", borderRadius: 20, border: "1.5px solid #ede8e0", boxShadow: "0 2px 12px rgba(44,80,58,0.07)", overflow: "hidden" }}>
@@ -154,7 +152,7 @@ export default function PojisteniPage() {
                   <button
                     onClick={() => handleKlik(p)}
                     style={{ width: "100%", background: kliknuto[p.id] ? "#1b5e20" : p.barva, color: "#fff", border: "none", borderRadius: 12, padding: "12px 16px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "background 0.2s" }}>
-                    {kliknuto[p.id] ? "✓ Otevřeno" : "Zjistit cenu →"}
+                    {kliknuto[p.id] ? "✓ Přesměrování..." : "Zjistit cenu →"}
                   </button>
                   <div style={{ fontSize: "0.68rem", color: p.barva, opacity: 0.7, textAlign: "center" }}>
                     Přejdeš na web pojišťovny
