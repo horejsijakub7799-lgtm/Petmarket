@@ -6,6 +6,7 @@ import App from './App.jsx'
 import ProfilePage from './ProfilePage.jsx'
 import VetRegister from './VetRegister.jsx'
 import HotelRegister from './HotelRegister.jsx'
+import HlidaniRegister from './HlidaniRegister.jsx'
 import VencitelRegister from './VencitelRegister.jsx'
 import ProdejceRegister from './ProdejceRegister.jsx'
 import PartneriPage from './PartneriPage.jsx'
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/profil" element={<ProfilePage />} />
           <Route path="/veterinar/registrace" element={<VetRegister />} />
           <Route path="/hotel/registrace" element={<HotelRegister />} />
+          <Route path="/hlidani/registrace" element={<HlidaniRegister />} />
           <Route path="/vencitel/registrace" element={<VencitelRegister />} />
           <Route path="/prodejce/registrace" element={<ProdejceRegister />} />
           <Route path="/partneri" element={<PartneriPage />} />

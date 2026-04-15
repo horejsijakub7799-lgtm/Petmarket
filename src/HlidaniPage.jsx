@@ -35,7 +35,7 @@ export default function HlidaniPage() {
         </button>
         <span style={{ color: "#8a9e92", fontSize: "0.85rem" }}>/ Hlídání mazlíčků</span>
         <div style={{ marginLeft: "auto" }}>
-          <button onClick={() => navigate("/partneri")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat profil</button>
+          <button onClick={() => navigate("/hlidani/registrace")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat profil</button>
         </div>
       </nav>
       <div style={{ background: "linear-gradient(135deg, #2d6a4f 0%, #3a7d60 100%)", padding: "40px 24px", textAlign: "center" }}>
@@ -56,7 +56,7 @@ export default function HlidaniPage() {
           <div style={{ textAlign: "center", padding: "60px", color: "#8a9e92" }}>
             <div style={{ fontSize: "3rem", marginBottom: 16 }}>🏠</div>
             <p style={{ marginBottom: 20 }}>Zatím žádní hlídači. Buď první!</p>
-            <button onClick={() => navigate("/partneri")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zaregistrovat se</button>
+            <button onClick={() => navigate("/hlidani/registrace")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zaregistrovat se</button>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>

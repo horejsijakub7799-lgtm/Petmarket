@@ -18,6 +18,8 @@ export default function VencitelRegister() {
   const [form, setForm] = useState({
     name: "", address: "", city: "", phone: "", web: "",
     description: "", experience: "", sluzby: [], zvirata: [],
+    price_per_walk: "", walk_duration_min: "30", area_radius_km: "",
+    gps_tracking: false, group_walks: false,
     tier: "basic",
   });
 
@@ -53,6 +55,7 @@ export default function VencitelRegister() {
     if (!user) { setMsg("⚠️ Musíš být přihlášen."); return; }
     setSaving(true); setMsg("");
     try {
+      // Nahrání fotek
       const fotoUrls = [];
       for (const fotka of fotky) {
         const fileName = `vencitel/${user.id}/${Date.now()}_${fotka.name}`;
@@ -61,14 +64,43 @@ export default function VencitelRegister() {
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
-      const { error } = await supabase.from("partner_profiles").insert({
-        user_id: user.id, type: "vencitel",
-        name: form.name, address: form.address, city: form.city,
-        phone: form.phone, web: form.web, description: form.description,
-        metadata: { experience: form.experience, sluzby: form.sluzby, zvirata: form.zvirata },
-        foto_urls: fotoUrls, tier: form.tier, approved: false,
-      });
-      if (error) throw error;
+
+      // 1. Uložení do partner_profiles (společná data)
+      const { data: partner, error: partnerError } = await supabase
+        .from("partner_profiles")
+        .insert({
+          user_id: user.id,
+          type: "vencitel",
+          name: form.name,
+          address: form.address,
+          city: form.city,
+          phone: form.phone,
+          website: form.web,
+          description: form.description,
+          metadata: { experience: form.experience, sluzby: form.sluzby, zvirata: form.zvirata },
+          foto_urls: fotoUrls,
+          tier: form.tier,
+          approved: false,
+        })
+        .select()
+        .single();
+
+      if (partnerError) throw partnerError;
+
+      // 2. Uložení do venceni_profiles (specifická data venčitele)
+      const { error: venceniError } = await supabase
+        .from("venceni_profiles")
+        .insert({
+          partner_id: partner.id,
+          price_per_walk: parseFloat(form.price_per_walk) || null,
+          walk_duration_min: parseInt(form.walk_duration_min) || 30,
+          area_radius_km: parseFloat(form.area_radius_km) || null,
+          gps_tracking: form.gps_tracking,
+          group_walks: form.group_walks,
+        });
+
+      if (venceniError) throw venceniError;
+
       setStep(4);
     } catch (err) { setMsg("❌ Chyba: " + err.message); }
     setSaving(false);
@@ -76,6 +108,7 @@ export default function VencitelRegister() {
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "11px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
+  const toggleStyle = (active) => ({ padding: "7px 14px", borderRadius: 20, border: `1.5px solid ${active ? "#2d6a4f" : "#ede8e0"}`, background: active ? "#e8f5ef" : "#fff", color: active ? "#2d6a4f" : "#4a5e52", fontSize: "0.82rem", fontWeight: active ? 600 : 400, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" });
 
   return (
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
@@ -115,6 +148,18 @@ export default function VencitelRegister() {
                 <div><label style={labelStyle}>Telefon *</label><input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="+420 777 123 456" style={inputStyle} /></div>
                 <div><label style={labelStyle}>Web / Instagram</label><input value={form.web} onChange={e => set("web", e.target.value)} placeholder="@vencim_psy" style={inputStyle} /></div>
               </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div><label style={labelStyle}>Cena za procházku (Kč)</label><input type="number" value={form.price_per_walk} onChange={e => set("price_per_walk", e.target.value)} placeholder="200" style={inputStyle} /></div>
+                <div><label style={labelStyle}>Délka procházky (min)</label><input type="number" value={form.walk_duration_min} onChange={e => set("walk_duration_min", e.target.value)} placeholder="30" style={inputStyle} /></div>
+                <div><label style={labelStyle}>Radius oblasti (km)</label><input type="number" value={form.area_radius_km} onChange={e => set("area_radius_km", e.target.value)} placeholder="5" style={inputStyle} /></div>
+              </div>
+              <div>
+                <label style={labelStyle}>Možnosti</label>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button onClick={() => set("gps_tracking", !form.gps_tracking)} style={toggleStyle(form.gps_tracking)}>GPS tracking</button>
+                  <button onClick={() => set("group_walks", !form.group_walks)} style={toggleStyle(form.group_walks)}>Skupinové procházky</button>
+                </div>
+              </div>
               <div><label style={labelStyle}>Zkušenosti</label><input value={form.experience} onChange={e => set("experience", e.target.value)} placeholder="Např. 5 let zkušeností, absolvovaný kurz..." style={inputStyle} /></div>
               <div><label style={labelStyle}>O mně</label><textarea value={form.description} onChange={e => set("description", e.target.value)} placeholder="Miluji psy a mám s nimi bohaté zkušenosti..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
               {msg && <div style={{ color: "#b91c1c", fontSize: "0.85rem" }}>{msg}</div>}
@@ -131,7 +176,7 @@ export default function VencitelRegister() {
                 <label style={labelStyle}>Nabízené služby</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                   {SLUZBY.map(s => (
-                    <button key={s} onClick={() => toggleSluzba(s)} style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px solid ${form.sluzby.includes(s) ? "#2d6a4f" : "#ede8e0"}`, background: form.sluzby.includes(s) ? "#e8f5ef" : "#fff", color: form.sluzby.includes(s) ? "#2d6a4f" : "#4a5e52", fontSize: "0.82rem", fontWeight: form.sluzby.includes(s) ? 600 : 400, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{s}</button>
+                    <button key={s} onClick={() => toggleSluzba(s)} style={toggleStyle(form.sluzby.includes(s))}>{s}</button>
                   ))}
                 </div>
               </div>
@@ -139,7 +184,7 @@ export default function VencitelRegister() {
                 <label style={labelStyle}>Přijímám plemena</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                   {ZVIRATA.map(s => (
-                    <button key={s} onClick={() => toggleZvire(s)} style={{ padding: "7px 14px", borderRadius: 20, border: `1.5px solid ${form.zvirata.includes(s) ? "#2d6a4f" : "#ede8e0"}`, background: form.zvirata.includes(s) ? "#e8f5ef" : "#fff", color: form.zvirata.includes(s) ? "#2d6a4f" : "#4a5e52", fontSize: "0.82rem", fontWeight: form.zvirata.includes(s) ? 600 : 400, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>{s}</button>
+                    <button key={s} onClick={() => toggleZvire(s)} style={toggleStyle(form.zvirata.includes(s))}>{s}</button>
                   ))}
                 </div>
               </div>
