@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 import { useAuth } from "./useAuth";
@@ -70,6 +70,10 @@ export default function PojisteniPage() {
   const { user } = useAuth();
   const [openFaq, setOpenFaq] = useState(null);
   const [kliknuto, setKliknuto] = useState({});
+
+  useEffect(() => {
+    setKliknuto({});
+  }, []);
 
   const handleKlik = async (pojistovna) => {
     await supabase.from("affiliate_clicks").insert({
