@@ -16,6 +16,14 @@ const SELLER_MENU = [
 const KATEGORIE = ["Krmivo", "Hračky", "Obojky a vodítka", "Pelíšky", "Hygiena", "Doplňky", "Jiné"];
 const ZVIRATA = ["Pes", "Kočka", "Hlodavec", "Pták", "Ryba", "Plaz", "Jiné"];
 
+const statusColor = {
+  pending: { bg: "#fff8e1", color: "#e65100", label: "Čeká" },
+  paid: { bg: "#e8f5e9", color: "#1b5e20", label: "Zaplaceno" },
+  shipped: { bg: "#e3f2fd", color: "#0d47a1", label: "Odesláno" },
+  delivered: { bg: "#f3e5f5", color: "#4a148c", label: "Doručeno" },
+  cancelled: { bg: "#fce4ec", color: "#880e4f", label: "Zrušeno" },
+};
+
 function CsvImport({ user, sellerProfile, onSuccess }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState([]);
@@ -68,9 +76,7 @@ function CsvImport({ user, sellerProfile, onSuccess }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <input type="file" accept=".csv" onChange={handleFile} style={{ ...inputStyle, padding: "8px 14px" }} />
-      </div>
+      <input type="file" accept=".csv" onChange={handleFile} style={{ ...inputStyle, padding: "8px 14px" }} />
       {preview.length > 0 && (
         <div>
           <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1c2b22", marginBottom: 10 }}>Náhled ({preview.length} produktů):</div>
@@ -118,6 +124,8 @@ export default function SellerDashboard() {
   const [produkty, setProdukty] = useState([]);
   const [objednavky, setObjednavky] = useState([]);
   const [doprava, setDoprava] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("vse");
+  const [expandedOrder, setExpandedOrder] = useState(null);
 
   const [productForm, setProductForm] = useState({ title: "", description: "", price: "", stock: 1, category: "", animal: "" });
   const [productPhotos, setProductPhotos] = useState([]);
@@ -236,9 +244,41 @@ export default function SellerDashboard() {
 
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
+  const handleUpdateStatus = async (orderId, status) => {
+    await supabase.from("orders").update({ status }).eq("id", orderId);
+    fetchObjednavky();
+  };
+
+  const exportCSV = () => {
+    const rows = [["ID", "Zákazník", "Email", "Telefon", "Adresa", "Produkty (Kč)", "Doprava (Kč)", "Celkem (Kč)", "Status", "Datum"]];
+    filteredObjednavky.forEach(o => {
+      rows.push([
+        o.id.slice(0, 8).toUpperCase(),
+        o.buyer_name || "",
+        o.buyer_email || "",
+        o.buyer_phone || "",
+        o.buyer_address || "",
+        o.total_products || 0,
+        o.shipping_price || 0,
+        o.total_price || 0,
+        statusColor[o.status]?.label || o.status,
+        new Date(o.created_at).toLocaleDateString("cs-CZ"),
+      ]);
+    });
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "objednavky.csv"; a.click();
+  };
+
+  const filteredObjednavky = filterStatus === "vse" ? objednavky : objednavky.filter(o => o.status === filterStatus);
+
+  const trzbyCelkem = objednavky.filter(o => ["paid", "shipped", "delivered"].includes(o.status)).reduce((s, o) => s + (o.total_products || 0), 0);
+  const trzbyProvize = Math.round(trzbyCelkem * 0.1);
+  const trzbyNetto = trzbyCelkem - trzbyProvize;
+
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
-  const statusColor = { pending: { bg: "#fff8e1", color: "#e65100", label: "Čeká" }, paid: { bg: "#e8f5e9", color: "#1b5e20", label: "Zaplaceno" }, shipped: { bg: "#e3f2fd", color: "#0d47a1", label: "Odesláno" }, delivered: { bg: "#f3e5f5", color: "#4a148c", label: "Doručeno" }, cancelled: { bg: "#fce4ec", color: "#880e4f", label: "Zrušeno" } };
 
   if (authLoading || loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', sans-serif" }}>
@@ -263,6 +303,7 @@ export default function SellerDashboard() {
           <button onClick={handleSignOut} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 8, padding: "7px 14px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Odhlásit</button>
         </div>
       </nav>
+
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 28 }}>
         <div style={{ width: 240, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, padding: "20px", marginBottom: 12, border: "1px solid #ede8e0", textAlign: "center" }}>
@@ -276,7 +317,12 @@ export default function SellerDashboard() {
             {SELLER_MENU.map((item, i) => (
               <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ width: "100%", padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none", borderBottom: i < SELLER_MENU.length - 1 ? "1px solid #f7f4ef" : "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400, color: activeTab === item.id ? "#2d6a4f" : "#4a5e52", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
                 <span>{item.icon}</span>{item.label}
-                {activeTab === item.id && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
+                {item.id === "objednavky" && objednavky.filter(o => o.status === "pending").length > 0 && (
+                  <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: "0.65rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {objednavky.filter(o => o.status === "pending").length}
+                  </span>
+                )}
+                {activeTab === item.id && !objednavky.filter(o => o.status === "pending").length && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
               </button>
             ))}
             <button onClick={handleSignOut} style={{ width: "100%", padding: "12px 18px", display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "none", borderTop: "1px solid #f7f4ef", cursor: "pointer", fontSize: "0.88rem", color: "#b91c1c", fontFamily: "'DM Sans', sans-serif" }}>
@@ -284,6 +330,7 @@ export default function SellerDashboard() {
             </button>
           </div>
         </div>
+
         <div style={{ flex: 1 }}>
           {activeTab === "prehled" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -291,7 +338,7 @@ export default function SellerDashboard() {
                 {[
                   { label: "Produkty", value: produkty.length, icon: "🛍️" },
                   { label: "Objednávky", value: objednavky.length, icon: "📦" },
-                  { label: "Tržby celkem", value: `${objednavky.filter(o => o.status === "paid" || o.status === "shipped" || o.status === "delivered").reduce((s, o) => s + (o.total_products || 0), 0).toFixed(0)} Kč`, icon: "💰" },
+                  { label: "Tržby celkem", value: `${trzbyCelkem.toFixed(0)} Kč`, icon: "💰" },
                 ].map(({ label, value, icon }) => (
                   <div key={label} style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
                     <div style={{ fontSize: "1.8rem", marginBottom: 8 }}>{icon}</div>
@@ -299,6 +346,23 @@ export default function SellerDashboard() {
                     <div style={{ fontSize: "0.78rem", color: "#8a9e92", marginTop: 4 }}>{label}</div>
                   </div>
                 ))}
+              </div>
+              <div style={{ background: "#fff", borderRadius: 14, padding: "20px 24px", border: "1px solid #ede8e0" }}>
+                <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 14 }}>Přehled tržeb (zaplacené + odeslané + doručené)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                  <div style={{ textAlign: "center", padding: "12px", background: "#f7f4ef", borderRadius: 10 }}>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1c2b22" }}>{trzbyCelkem.toFixed(0)} Kč</div>
+                    <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 2 }}>Tržby z produktů</div>
+                  </div>
+                  <div style={{ textAlign: "center", padding: "12px", background: "#fce4ec", borderRadius: 10 }}>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b91c1c" }}>-{trzbyProvize.toFixed(0)} Kč</div>
+                    <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 2 }}>Provize Pet Market (10%)</div>
+                  </div>
+                  <div style={{ textAlign: "center", padding: "12px", background: "#e8f5e9", borderRadius: 10 }}>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#1b5e20" }}>{trzbyNetto.toFixed(0)} Kč</div>
+                    <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 2 }}>Váš výdělek (netto)</div>
+                  </div>
+                </div>
               </div>
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>Poslední objednávky</h2>
@@ -323,6 +387,7 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
+
           {activeTab === "produkty" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -365,6 +430,7 @@ export default function SellerDashboard() {
               )}
             </div>
           )}
+
           {activeTab === "pridat" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Přidat produkt</h2>
@@ -401,17 +467,17 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
+
           {activeTab === "import" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>CSV import produktů</h2>
               <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Nahraj CSV soubor s produkty a přidej je hromadně do svého obchodu.</p>
               <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "16px 20px", marginBottom: 20, fontSize: "0.85rem", color: "#2d6a4f" }}>
                 <strong>Formát CSV:</strong> název, popis, cena, kategorie, zvíře, skladem<br />
-                <span style={{ color: "#4a5e52" }}>Kategorie: Krmivo | Hračky | Obojky a vodítka | Pelíšky | Hygiena | Doplňky | Jiné</span><br />
-                <span style={{ color: "#4a5e52" }}>Zvíře: Pes | Kočka | Hlodavec | Pták | Ryba | Plaz | Jiné</span>
+                <span style={{ color: "#4a5e52" }}>Kategorie: Krmivo | Hračky | Obojky a vodítka | Pelíšky | Hygiena | Doplňky | Jiné</span>
               </div>
               <button onClick={() => {
-                const csv = "název,popis,cena,kategorie,zvíře,skladem\nGranule pro psy 5kg,Kvalitní granule pro dospělé psy,299,Krmivo,Pes,50\nHračka míček,Gumový míček pro psy,89,Hračky,Pes,30\nPelíšek malý,Měkký pelíšek pro kočky,199,Pelíšky,Kočka,20";
+                const csv = "název,popis,cena,kategorie,zvíře,skladem\nGranule pro psy 5kg,Kvalitní granule pro dospělé psy,299,Krmivo,Pes,50\nHračka míček,Gumový míček pro psy,89,Hračky,Pes,30";
                 const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a"); a.href = url; a.download = "vzor_produkty.csv"; a.click();
@@ -421,62 +487,108 @@ export default function SellerDashboard() {
               <CsvImport user={user} sellerProfile={sellerProfile} onSuccess={() => { fetchProdukty(); setActiveTab("produkty"); }} />
             </div>
           )}
+
           {activeTab === "objednavky" && (
-            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Objednávky</h2>
-              {objednavky.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
-                  <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📦</div>
-                  <p>Zatím žádné objednávky.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+                {[
+                  { key: "vse", label: "Všechny", count: objednavky.length },
+                  { key: "pending", label: "Čekají", count: objednavky.filter(o => o.status === "pending").length },
+                  { key: "paid", label: "Zaplaceno", count: objednavky.filter(o => o.status === "paid").length },
+                  { key: "shipped", label: "Odesláno", count: objednavky.filter(o => o.status === "shipped").length },
+                  { key: "delivered", label: "Doručeno", count: objednavky.filter(o => o.status === "delivered").length },
+                ].map(f => (
+                  <button key={f.key} onClick={() => setFilterStatus(f.key)} style={{ background: filterStatus === f.key ? "#2d6a4f" : "#fff", color: filterStatus === f.key ? "#fff" : "#4a5e52", border: `1.5px solid ${filterStatus === f.key ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 10, padding: "10px 8px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.1rem", fontWeight: 700 }}>{f.count}</div>
+                    <div>{f.label}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #ede8e0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", margin: 0 }}>
+                    Objednávky {filterStatus !== "vse" && `— ${statusColor[filterStatus]?.label}`}
+                    <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "#8a9e92", marginLeft: 8 }}>({filteredObjednavky.length})</span>
+                  </h2>
+                  <button onClick={exportCSV} style={{ background: "#f7f4ef", color: "#2d6a4f", border: "1.5px solid #b7d9c7", borderRadius: 8, padding: "7px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                    ⬇️ Export CSV
+                  </button>
                 </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {objednavky.map(o => {
-                    const s = statusColor[o.status] || statusColor.pending;
-                    return (
-                      <div key={o.id} style={{ border: "1px solid #ede8e0", borderRadius: 12, padding: "18px 20px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                          <div>
-                            <div style={{ fontWeight: 700, color: "#1c2b22", marginBottom: 4 }}>{o.buyer_name || "Zákazník"}</div>
-                            <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>{o.buyer_email} · {o.buyer_phone}</div>
-                            <div style={{ fontSize: "0.8rem", color: "#4a5e52", marginTop: 2 }}>📍 {o.buyer_address}</div>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <span style={{ background: s.bg, color: s.color, borderRadius: 20, padding: "4px 12px", fontSize: "0.78rem", fontWeight: 700 }}>{s.label}</span>
-                            <div style={{ fontSize: "0.78rem", color: "#8a9e92", marginTop: 6 }}>{new Date(o.created_at).toLocaleDateString("cs-CZ")}</div>
-                          </div>
-                        </div>
-                        <div style={{ background: "#f7f4ef", borderRadius: 8, padding: "10px 14px", marginBottom: 10 }}>
-                          {o.order_items?.map(item => (
-                            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#1c2b22", padding: "3px 0" }}>
-                              <span>{item.title} × {item.quantity}</span>
-                              <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(0)} Kč</span>
+
+                {filteredObjednavky.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px", color: "#8a9e92" }}>
+                    <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📦</div>
+                    <p>Žádné objednávky v této kategorii.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {filteredObjednavky.map(o => {
+                      const s = statusColor[o.status] || statusColor.pending;
+                      const isExpanded = expandedOrder === o.id;
+                      return (
+                        <div key={o.id} style={{ border: "1px solid #ede8e0", borderRadius: 12, overflow: "hidden" }}>
+                          <div onClick={() => setExpandedOrder(isExpanded ? null : o.id)} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", cursor: "pointer", background: isExpanded ? "#f7faf8" : "#fff" }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, color: "#1c2b22", marginBottom: 2 }}>{o.buyer_name || "Zákazník"}</div>
+                              <div style={{ fontSize: "0.78rem", color: "#8a9e92" }}>
+                                #{o.id.slice(0, 8).toUpperCase()} · {new Date(o.created_at).toLocaleDateString("cs-CZ")}
+                              </div>
                             </div>
-                          ))}
-                          <div style={{ borderTop: "1px solid #ede8e0", marginTop: 6, paddingTop: 6, display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                            <span style={{ color: "#8a9e92" }}>🚚 {o.shipping_name}</span>
-                            <span style={{ color: "#8a9e92" }}>{o.shipping_price} Kč</span>
+                            <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "1rem" }}>{o.total_price} Kč</div>
+                            <span style={{ background: s.bg, color: s.color, borderRadius: 20, padding: "4px 12px", fontSize: "0.72rem", fontWeight: 700 }}>{s.label}</span>
+                            <span style={{ color: "#8a9e92", fontSize: "1rem" }}>{isExpanded ? "▲" : "▼"}</span>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#2d6a4f", fontSize: "0.95rem", marginTop: 4 }}>
-                            <span>Celkem</span>
-                            <span>{o.total_price} Kč</span>
-                          </div>
+
+                          {isExpanded && (
+                            <div style={{ borderTop: "1px solid #ede8e0", padding: "16px 20px", background: "#fafaf8" }}>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
+                                <div style={{ fontSize: "0.82rem" }}>
+                                  <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 6 }}>📋 Kontakt</div>
+                                  <div style={{ color: "#4a5e52" }}>{o.buyer_email}</div>
+                                  <div style={{ color: "#4a5e52" }}>{o.buyer_phone}</div>
+                                  <div style={{ color: "#4a5e52", marginTop: 4 }}>📍 {o.buyer_address}</div>
+                                </div>
+                                <div style={{ fontSize: "0.82rem" }}>
+                                  <div style={{ fontWeight: 600, color: "#1c2b22", marginBottom: 6 }}>🚚 Doprava</div>
+                                  <div style={{ color: "#4a5e52" }}>{o.shipping_name}</div>
+                                  <div style={{ color: "#4a5e52" }}>{o.shipping_price} Kč</div>
+                                </div>
+                              </div>
+                              <div style={{ background: "#fff", borderRadius: 8, padding: "12px 14px", marginBottom: 14, border: "1px solid #ede8e0" }}>
+                                {o.order_items?.map(item => (
+                                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#1c2b22", padding: "4px 0", borderBottom: "1px solid #f7f4ef" }}>
+                                    <span>{item.title} × {item.quantity}</span>
+                                    <span style={{ fontWeight: 600 }}>{(item.price * item.quantity).toFixed(0)} Kč</span>
+                                  </div>
+                                ))}
+                                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: "#2d6a4f", fontSize: "0.9rem", marginTop: 8 }}>
+                                  <span>Celkem</span>
+                                  <span>{o.total_price} Kč</span>
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", marginBottom: 8 }}>Změnit status</div>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  {["pending", "paid", "shipped", "delivered", "cancelled"].map(status => (
+                                    <button key={status} onClick={() => handleUpdateStatus(o.id, status)}
+                                      style={{ background: o.status === status ? "#2d6a4f" : "#f7f4ef", color: o.status === status ? "#fff" : "#4a5e52", border: `1px solid ${o.status === status ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 8, padding: "6px 12px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                                      {statusColor[status]?.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          {["pending", "paid", "shipped", "delivered"].map(status => (
-                            <button key={status} onClick={async () => { await supabase.from("orders").update({ status }).eq("id", o.id); fetchObjednavky(); }}
-                              style={{ background: o.status === status ? "#2d6a4f" : "#f7f4ef", color: o.status === status ? "#fff" : "#4a5e52", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                              {statusColor[status]?.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
+
           {activeTab === "doprava" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>Nastavení dopravy</h2>
@@ -503,6 +615,7 @@ export default function SellerDashboard() {
               </div>
             </div>
           )}
+
           {activeTab === "profil" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Profil obchodu</h2>
