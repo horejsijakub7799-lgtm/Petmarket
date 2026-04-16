@@ -150,6 +150,27 @@ function CartPanel({ cart, onClose, onUpdateQty, onRemove, shippingOptions, user
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.88rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 5 };
 
+  const sendEmailNotification = async (order, orderItems, sellerProfile) => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          order: { ...order, order_items: orderItems },
+          sellerEmail: sellerProfile?.email || sellerProfile?.user_email,
+          sellerName: sellerProfile?.name,
+        }),
+      });
+    } catch (err) {
+      console.error("Email notification failed:", err);
+    }
+  };
+
   const handleOrder = async () => {
     if (!form.name || !form.email || !form.phone || !form.address || !form.city) {
       setMsg("⚠️ Vyplň všechna pole."); return;
@@ -176,16 +197,40 @@ function CartPanel({ cart, onClose, onUpdateQty, onRemove, shippingOptions, user
         }).select().single();
         if (error) throw error;
         lastOrderId = order.id;
+
+        const orderItems = [];
         for (const item of sellerCart.items) {
-          await supabase.from("order_items").insert({
+          const { data: orderItem } = await supabase.from("order_items").insert({
             order_id: order.id,
             product_id: item.id,
             title: item.title,
             price: item.price,
             quantity: item.qty,
-          });
+          }).select().single();
+          if (orderItem) orderItems.push(orderItem);
           await supabase.from("products").update({ stock: item.stock - item.qty }).eq("id", item.id);
         }
+
+        // Načti profil prodejce a pošli email notifikaci
+        const { data: sellerProfile } = await supabase
+          .from("partner_profiles")
+          .select("name, email, user_id")
+          .eq("user_id", sellerId)
+          .eq("type", "seller")
+          .single();
+
+        // Pokud nemáme email z profilu, načti ho z auth
+        let sellerEmail = sellerProfile?.email;
+        if (!sellerEmail) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("id", sellerId)
+            .single();
+          sellerEmail = profile?.email;
+        }
+
+        await sendEmailNotification(order, orderItems, { ...sellerProfile, email: sellerEmail });
       }
       onOrderSuccess(lastOrderId);
     } catch (err) { setMsg("❌ Chyba: " + err.message); }
