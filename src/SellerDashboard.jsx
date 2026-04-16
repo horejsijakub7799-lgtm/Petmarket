@@ -126,6 +126,8 @@ export default function SellerDashboard() {
   const [doprava, setDoprava] = useState([]);
   const [filterStatus, setFilterStatus] = useState("vse");
   const [expandedOrder, setExpandedOrder] = useState(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [productForm, setProductForm] = useState({ title: "", description: "", price: "", stock: 1, category: "", animal: "" });
   const [productPhotos, setProductPhotos] = useState([]);
@@ -271,7 +273,10 @@ export default function SellerDashboard() {
     const a = document.createElement("a"); a.href = url; a.download = "objednavky.csv"; a.click();
   };
 
-  const filteredObjednavky = filterStatus === "vse" ? objednavky : objednavky.filter(o => o.status === filterStatus);
+  const filteredObjednavky = objednavky
+    .filter(o => filterStatus === "vse" || o.status === filterStatus)
+    .filter(o => !dateFrom || new Date(o.created_at) >= new Date(dateFrom))
+    .filter(o => !dateTo || new Date(o.created_at) <= new Date(dateTo + "T23:59:59"));
 
   const trzbyCelkem = objednavky.filter(o => ["paid", "shipped", "delivered"].includes(o.status)).reduce((s, o) => s + (o.total_products || 0), 0);
   const trzbyProvize = Math.round(trzbyCelkem * 0.1);
@@ -511,9 +516,17 @@ export default function SellerDashboard() {
                     Objednávky {filterStatus !== "vse" && `— ${statusColor[filterStatus]?.label}`}
                     <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "#8a9e92", marginLeft: 8 }}>({filteredObjednavky.length})</span>
                   </h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ border: "1.5px solid #ede8e0", borderRadius: 8, padding: "6px 10px", fontSize: "0.8rem", fontFamily: "'DM Sans', sans-serif", color: "#1c2b22", background: "#f7f4ef", cursor: "pointer" }} />
+                  <span style={{ color: "#8a9e92", fontSize: "0.8rem" }}>–</span>
+                  <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ border: "1.5px solid #ede8e0", borderRadius: 8, padding: "6px 10px", fontSize: "0.8rem", fontFamily: "'DM Sans', sans-serif", color: "#1c2b22", background: "#f7f4ef", cursor: "pointer" }} />
+                  {(dateFrom || dateTo) && (
+                    <button onClick={() => { setDateFrom(""); setDateTo(""); }} style={{ background: "#fce4ec", color: "#b91c1c", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✕</button>
+                  )}
                   <button onClick={exportCSV} style={{ background: "#f7f4ef", color: "#2d6a4f", border: "1.5px solid #b7d9c7", borderRadius: 8, padding: "7px 14px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                     ⬇️ Export CSV
                   </button>
+                </div>
                 </div>
 
                 {filteredObjednavky.length === 0 ? (
