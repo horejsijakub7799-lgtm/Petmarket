@@ -16,7 +16,31 @@ serve(async (req) => {
   let emailHtml = "";
   let subject = "";
 
-  if (order._isApproval) {
+  if (order._isNewRegistration) {
+    // Email adminovi o nové registraci
+    subject = `🔔 Nová registrace partnera — ${order._registrantName}`;
+    emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #e07b39; padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 1.4rem;">🔔 Pet Market — Nová registrace!</h1>
+        </div>
+        <div style="background: #f7f4ef; padding: 24px; border-radius: 0 0 12px 12px;">
+          <p style="color: #4a5e52; font-size: 1rem;">Čeká na schválení: <strong>${order._registrantName}</strong></p>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Typ:</strong> ${order._registrantType}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Plán:</strong> ${order._registrantTier}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Email:</strong> ${order.buyer_email}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Telefon:</strong> ${order.buyer_phone}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Adresa:</strong> ${order.buyer_address}</p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://petmarket-theta.vercel.app/admin-x7k9p2" style="background: #e07b39; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 0.95rem;">Přejít do Admin panelu →</a>
+          </div>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center;">Pet Market · Admin notifikace</p>
+        </div>
+      </div>
+    `;
+  } else if (order._isApproval) {
     // Email o schválení profilu
     subject = `🎉 Váš profil na Pet Market byl schválen!`;
     emailHtml = `

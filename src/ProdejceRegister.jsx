@@ -49,6 +49,35 @@ export default function ProdejceRegister() {
     setFotky(nf); setFotkyPreviews(nf.map(f => URL.createObjectURL(f)));
   };
 
+  const sendAdminNotification = async () => {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify({
+          sellerEmail: "horejsi.jakub7799@gmail.com",
+          sellerName: "Admin",
+          order: {
+            _isNewRegistration: true,
+            _registrantName: form.name,
+            _registrantType: "Partnerský prodejce",
+            _registrantTier: form.tier,
+            buyer_name: form.name,
+            buyer_email: user.email,
+            buyer_phone: form.phone,
+            buyer_address: `${form.address}, ${form.city}`,
+            total_price: 0,
+            shipping_name: "",
+            shipping_price: 0,
+            order_items: [],
+          },
+        }),
+      });
+    } catch (e) { console.error("Admin notification failed:", e); }
+  };
+
   const handleSubmit = async () => {
     if (!user) { setMsg("⚠️ Musíš být přihlášen."); return; }
     setSaving(true); setMsg("");
@@ -69,6 +98,9 @@ export default function ProdejceRegister() {
         foto_urls: fotoUrls, tier: form.tier, approved: false,
       });
       if (error) throw error;
+
+      await sendAdminNotification();
+
       setStep(4);
     } catch (err) { setMsg("❌ Chyba: " + err.message); }
     setSaving(false);
