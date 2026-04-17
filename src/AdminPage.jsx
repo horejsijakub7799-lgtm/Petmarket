@@ -48,13 +48,55 @@ export default function AdminPage() {
   const cekajici = allProfiles.filter(p => !p.approved);
   const schvaleni = allProfiles.filter(p => p.approved);
 
+  const sendApprovalEmail = async (profile) => {
+    try {
+      const email = profile.profiles?.email || profile.email;
+      const name = profile._type === "vet" ? profile.clinic_name : profile.name;
+      const typeLabel = profile._type === "vet" ? "Veterinární klinika" : (TYPE_LABELS[profile.type] || profile.type);
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({
+          sellerEmail: email,
+          sellerName: name,
+          order: {
+            buyer_name: "Pet Market Admin",
+            buyer_email: ADMIN_EMAIL,
+            buyer_phone: "",
+            buyer_address: "",
+            total_price: 0,
+            shipping_name: "",
+            shipping_price: 0,
+            order_items: [],
+            _isApproval: true,
+            _approvalName: name,
+            _approvalType: typeLabel,
+          },
+        }),
+      });
+    } catch (err) {
+      console.error("Approval email failed:", err);
+    }
+  };
+
   const handleApprove = async (profile) => {
     setSaving(true);
     const table = profile._type === "vet" ? "vet_profiles" : "partner_profiles";
     const { error } = await supabase.from(table).update({ approved: true }).eq("id", profile.id);
+    if (error) { setMsg("❌ Chyba: " + error.message); setSaving(false); return; }
+
+    // Pošli email o schválení
+    await sendApprovalEmail(profile);
+
     setSaving(false);
-    if (error) { setMsg("❌ Chyba: " + error.message); return; }
-    setMsg("✅ Schváleno!");
+    setMsg("✅ Schváleno! Email odeslán.");
     setSelected(null);
     fetchAll();
     setTimeout(() => setMsg(""), 3000);
@@ -75,8 +117,6 @@ export default function AdminPage() {
 
   if (loading) return null;
   if (user?.email !== ADMIN_EMAIL) return null;
-
-  const inputStyle = { fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" };
 
   const ProfileCard = ({ profile }) => {
     const isVet = profile._type === "vet";
@@ -120,9 +160,7 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 24 }}>
 
-        {/* LEVÝ PANEL */}
         <div style={{ width: 420, flexShrink: 0 }}>
-          {/* STATS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 20 }}>
             {[
               { label: "Čekající", value: cekajici.length, color: "#e07b39" },
@@ -136,7 +174,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* TABY */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden" }}>
             <div style={{ display: "flex", borderBottom: "1px solid #ede8e0" }}>
               {[
@@ -156,7 +193,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* PRAVÝ PANEL — DETAIL */}
         <div style={{ flex: 1 }}>
           {!selected ? (
             <div style={{ background: "#fff", borderRadius: 16, padding: "60px 32px", border: "1px solid #ede8e0", textAlign: "center", color: "#8a9e92" }}>
@@ -165,7 +201,6 @@ export default function AdminPage() {
             </div>
           ) : (
             <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden" }}>
-              {/* FOTO */}
               {selected.foto_urls && selected.foto_urls.length > 0 && (
                 <div style={{ display: "flex", gap: 8, padding: "16px", background: "#f7f4ef", overflowX: "auto" }}>
                   {selected.foto_urls.map((url, i) => (
@@ -187,7 +222,6 @@ export default function AdminPage() {
                   <span style={{ background: selected.tier === "premium" ? "#fdf0e6" : "#e8f5ef", color: selected.tier === "premium" ? "#e07b39" : "#2d6a4f", borderRadius: 20, padding: "4px 14px", fontSize: "0.8rem", fontWeight: 700 }}>{selected.tier}</span>
                 </div>
 
-                {/* INFO */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                   {[
                     { label: "Email uživatele", value: selected.profiles?.email },
@@ -204,7 +238,6 @@ export default function AdminPage() {
                   ))}
                 </div>
 
-                {/* SPECIALIZACE / METADATA */}
                 {selected._type === "vet" && selected.specializations?.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", marginBottom: 8 }}>Specializace</div>
@@ -221,7 +254,6 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* ARES LINK */}
                 {selected.ico && (
                   <div style={{ background: "#f2faf6", borderRadius: 10, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: "1.2rem" }}>🔍</span>
@@ -233,10 +265,9 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* AKCE */}
                 {!selected.approved ? (
                   <div style={{ display: "flex", gap: 12 }}>
-                    <button onClick={() => handleApprove(selected)} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "✅ Schválit profil"}</button>
+                    <button onClick={() => handleApprove(selected)} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Ukládám..." : "✅ Schválit a poslat email"}</button>
                     <button onClick={() => handleReject(selected)} disabled={saving} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 10, padding: "13px 20px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>❌ Zamítnout</button>
                   </div>
                 ) : (
