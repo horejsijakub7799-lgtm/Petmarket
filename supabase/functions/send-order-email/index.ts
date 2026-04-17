@@ -16,7 +16,42 @@ serve(async (req) => {
   let emailHtml = "";
   let subject = "";
 
-  if (order._isNewRegistration) {
+  if (order._isReservation) {
+    subject = `✅ Potvrzení rezervace — ${order._partnerName}`;
+    emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1a4fa0; padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 1.4rem;">🐾 Potvrzení rezervace</h1>
+        </div>
+        <div style="background: #f7f4ef; padding: 24px; border-radius: 0 0 12px 12px;">
+          <p style="color: #4a5e52;">Ahoj <strong>${sellerName}</strong>! Tvoje rezervace byla úspěšně přijata.</p>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">🏨 ${order._partnerName}</h2>
+            <p style="margin: 4px 0; color: #4a5e52;">📍 ${order._partnerAddress}</p>
+            <p style="margin: 4px 0; color: #4a5e52;">📞 ${order._partnerPhone}</p>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">📅 Detaily rezervace</h2>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Příjezd:</strong> ${order._dateFrom}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Odjezd:</strong> ${order._dateTo}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Počet psů:</strong> ${order._numDogs}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Počet nocí:</strong> ${order._nights}</p>
+            <p style="margin: 8px 0 0; color: #1a4fa0; font-weight: 700; font-size: 1.1rem;"><strong>Celková cena: ${order._totalPrice} Kč</strong></p>
+          </div>
+          ${order._partnerConditions ? `
+          <div style="background: #fff8e1; border-radius: 10px; padding: 18px; margin: 16px 0; border: 1px solid #f5c99a;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">📋 Podmínky a instrukce</h2>
+            <p style="color: #4a5e52; white-space: pre-line; margin: 0;">${order._partnerConditions}</p>
+          </div>
+          ` : ""}
+          <div style="background: #e8f5ef; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
+            <p style="margin: 0; color: #2d6a4f; font-size: 0.9rem;">⚠️ Rezervace čeká na potvrzení od partnera. Partner vás brzy kontaktuje.</p>
+          </div>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">Pet Market · Tržiště pro mazlíčky · Celá ČR</p>
+        </div>
+      </div>
+    `;
+  } else if (order._isNewRegistration) {
     // Email adminovi o nové registraci
     subject = `🔔 Nová registrace partnera — ${order._registrantName}`;
     emailHtml = `
