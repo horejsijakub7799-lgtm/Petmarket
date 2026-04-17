@@ -18,6 +18,7 @@ import HlidaniPage from './HlidaniPage.jsx'
 import SellerDashboard from './SellerDashboard.jsx'
 import ShopPage from './ShopPage.jsx'
 import PojisteniPage from './PojisteniPage.jsx'
+import PartnerDetailPage from './PartnerDetailPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -41,6 +42,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/pojisteni" element={<PojisteniPage />} />
           <Route path="/seller/dashboard" element={<SellerDashboard />} />
           <Route path="/shop" element={<ShopPage />} />
+          <Route path="/partner/:id" element={<PartnerDetailPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

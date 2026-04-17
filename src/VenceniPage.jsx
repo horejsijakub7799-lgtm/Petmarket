@@ -6,7 +6,6 @@ export default function VenceniPage() {
   const navigate = useNavigate();
   const [vencitele, setVencitele] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState(null);
   const [search, setSearch] = useState("");
   const [filterCity, setFilterCity] = useState("");
 
@@ -61,7 +60,7 @@ export default function VenceniPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
             {filtered.map(v => (
-              <div key={v.id} onClick={() => setSelected(v)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1.5px solid #ede8e0", boxShadow: "0 2px 12px rgba(44,80,58,0.07)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s" }}
+              <div key={v.id} onClick={() => navigate(`/partner/${v.id}`)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1.5px solid #ede8e0", boxShadow: "0 2px 12px rgba(44,80,58,0.07)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s" }}
                 onMouseOver={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(44,80,58,0.14)"; }}
                 onMouseOut={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 2px 12px rgba(44,80,58,0.07)"; }}>
                 <div style={{ height: 160, background: "linear-gradient(145deg, #e8f5ef, #f2faf6)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
@@ -83,49 +82,6 @@ export default function VenceniPage() {
           </div>
         )}
       </div>
-      {selected && (
-        <div onClick={() => setSelected(null)} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, backdropFilter: "blur(5px)" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, maxWidth: 560, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(44,80,58,0.14)" }}>
-            <div style={{ height: 220, background: "linear-gradient(145deg, #e8f5ef, #f2faf6)", position: "relative", overflow: "hidden", borderRadius: "22px 22px 0 0" }}>
-              {selected.foto_urls?.[0] ? <img src={selected.foto_urls[0]} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "5rem" }}>🦮</div>}
-              {selected.tier === "premium" && <div style={{ position: "absolute", top: 14, left: 14, background: "#e07b39", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: "0.8rem", fontWeight: 700 }}>⭐ Premium</div>}
-              <button onClick={() => setSelected(null)} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "50%", width: 38, height: 38, cursor: "pointer", fontSize: "1.1rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-            </div>
-            <div style={{ padding: "24px 28px 28px" }}>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 6 }}>{selected.name}</h2>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-                {[`📍 ${selected.city}`, `📞 ${selected.phone}`, selected.web && `🌐 ${selected.web}`].filter(Boolean).map(tag => (
-                  <span key={tag} style={{ background: "#f7f4ef", border: "1px solid #ede8e0", borderRadius: 20, padding: "4px 12px", fontSize: "0.78rem", color: "#4a5e52" }}>{tag}</span>
-                ))}
-              </div>
-              {selected.description && <p style={{ color: "#4a5e52", fontSize: "0.9rem", lineHeight: 1.65, marginBottom: 18 }}>{selected.description}</p>}
-              {selected.metadata?.sluzby?.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", marginBottom: 8 }}>Nabízené služby</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {selected.metadata.sluzby.map(s => <span key={s} style={{ background: "#e8f5ef", color: "#2d6a4f", borderRadius: 20, padding: "3px 10px", fontSize: "0.78rem", fontWeight: 600 }}>{s}</span>)}
-                  </div>
-                </div>
-              )}
-              {selected.metadata?.zvirata?.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", marginBottom: 8 }}>Přijímá plemena</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {selected.metadata.zvirata.map(s => <span key={s} style={{ background: "#f7f4ef", color: "#4a5e52", borderRadius: 20, padding: "3px 10px", fontSize: "0.78rem" }}>{s}</span>)}
-                  </div>
-                </div>
-              )}
-              {selected.metadata?.experience && (
-                <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", marginBottom: 6 }}>Zkušenosti</div>
-                  <p style={{ color: "#4a5e52", fontSize: "0.88rem" }}>{selected.metadata.experience}</p>
-                </div>
-              )}
-              <button onClick={() => selected.phone && window.open(`tel:${selected.phone}`)} style={{ width: "100%", background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>📞 Kontaktovat</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
