@@ -43,8 +43,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/pojisteni" element={<PojisteniPage />} />
           <Route path="/seller/dashboard" element={<SellerDashboard />} />
           <Route path="/shop" element={<ShopPage />} />
-          <Route path="/partner/:id" element={<PartnerDetailPage />} />
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
+          <Route path="/partner/:id" element={<PartnerDetailPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
