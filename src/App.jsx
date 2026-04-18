@@ -49,7 +49,6 @@ const CSS = `
 const SERVICES = [
   { id: "bazar", label: "Bazar věcí", icon: "🛍️" },
   { id: "veterinar", label: "Veterinární kliniky", icon: "🩺" },
-  { id: "hlidani", label: "Hlídání", icon: "🏠" },
   { id: "venceni", label: "Venčení", icon: "🦮" },
   { id: "hotel", label: "Psí hotely", icon: "🏨" },
   { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️" },
@@ -325,7 +324,7 @@ export default function PetMarket() {
     if (!user) { setIsApprovedSeller(false); setIsPartner(false); return; }
     supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single()
       .then(({ data }) => setIsApprovedSeller(!!data));
-    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("approved", true).in("type", ["hotel", "vencitel", "hlidani", "veterinar"]).single()
+    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("approved", true).in("type", ["hotel", "vencitel", "veterinar"]).single()
       .then(({ data }) => setIsPartner(!!data));
   }, [user]);
 
@@ -348,7 +347,6 @@ export default function PetMarket() {
     if (service.id === "bazar") setActiveService("bazar");
     else if (service.id === "veterinar") window.location.href = "/veterinari";
     else if (service.id === "hotel") window.location.href = "/hotely";
-    else if (service.id === "hlidani") window.location.href = "/hlidani";
     else if (service.id === "venceni") window.location.href = "/venceni";
     else if (service.id === "partneri") window.location.href = "/shop";
     else if (service.id === "pojisteni") window.location.href = "/pojisteni";
