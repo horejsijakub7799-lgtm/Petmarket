@@ -67,7 +67,8 @@ export default function PartnerDashboard() {
   const [oteviraciMsg, setOteviraciMsg] = useState("");
   const [tym, setTym] = useState([]);
   const [specializace, setSpecializace] = useState([]);
-  const [novyLekar, setNovyLekar] = useState({ jmeno: "", titul: "", specializace: "" });
+  const [novyLekar, setNovyLekar] = useState({ jmeno: "", titul: "", specializace: "", foto: "" });
+  const [lekarFotoUploading, setLekarFotoUploading] = useState(false);
   const [tymMsg, setTymMsg] = useState("");
 
   useEffect(() => {
@@ -541,7 +542,11 @@ export default function PartnerDashboard() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
                     {tym.map((lekar, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: "#f7f4ef", borderRadius: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>👨‍⚕️</div>
+                        {lekar.foto ? (
+                          <img src={lekar.foto} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #2d6a4f" }} />
+                        ) : (
+                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", flexShrink: 0 }}>👨‍⚕️</div>
+                        )}
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "0.9rem" }}>{lekar.titul} {lekar.jmeno}</div>
                           <div style={{ fontSize: "0.78rem", color: "#8a9e92" }}>{lekar.specializace}</div>
@@ -553,12 +558,41 @@ export default function PartnerDashboard() {
                 )}
                 <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "18px", border: "1px solid #b7d9c7", marginBottom: 16 }}>
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Přidat lékaře</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 2fr", gap: 10 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 2fr", gap: 10, marginBottom: 10 }}>
                     <div><label style={labelStyle}>Titul</label><input style={inputStyle} value={novyLekar.titul} onChange={e => setNovyLekar(f => ({ ...f, titul: e.target.value }))} placeholder="MVDr." /></div>
                     <div><label style={labelStyle}>Jméno</label><input style={inputStyle} value={novyLekar.jmeno} onChange={e => setNovyLekar(f => ({ ...f, jmeno: e.target.value }))} placeholder="Jan Novák" /></div>
                     <div><label style={labelStyle}>Specializace</label><input style={inputStyle} value={novyLekar.specializace} onChange={e => setNovyLekar(f => ({ ...f, specializace: e.target.value }))} placeholder="Chirurgie" /></div>
                   </div>
-                  <button onClick={() => { if (!novyLekar.jmeno) return; setTym(t => [...t, novyLekar]); setNovyLekar({ jmeno: "", titul: "", specializace: "" }); }} style={{ marginTop: 12, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat lékaře</button>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={labelStyle}>Fotka lékaře</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      {novyLekar.foto ? (
+                        <div style={{ position: "relative" }}>
+                          <img src={novyLekar.foto} style={{ width: 56, height: 56, borderRadius: "50%", objectFit: "cover", border: "2px solid #2d6a4f" }} />
+                          <button onClick={() => setNovyLekar(f => ({ ...f, foto: "" }))} style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "#b91c1c", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.6rem", fontWeight: 700 }}>✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#e8f5ef", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>👨‍⚕️</div>
+                      )}
+                      <label style={{ background: "#fff", border: "1.5px solid #b7d9c7", borderRadius: 8, padding: "7px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: lekarFotoUploading ? "not-allowed" : "pointer", color: "#2d6a4f", fontFamily: "'DM Sans', sans-serif" }}>
+                        {lekarFotoUploading ? "Nahrávám..." : "📷 Nahrát fotku"}
+                        <input type="file" accept="image/*" style={{ display: "none" }} disabled={lekarFotoUploading} onChange={async (e) => {
+                          const file = e.target.files[0]; if (!file) return;
+                          setLekarFotoUploading(true);
+                          try {
+                            const compressed = await compressImage(file);
+                            const fileName = `doctors/${partnerProfile.id}/${Date.now()}_${file.name}`;
+                            const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, compressed);
+                            if (uploadError) throw uploadError;
+                            const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+                            setNovyLekar(f => ({ ...f, foto: urlData.publicUrl }));
+                          } catch (err) { alert("Chyba: " + err.message); }
+                          setLekarFotoUploading(false);
+                        }} />
+                      </label>
+                    </div>
+                  </div>
+                  <button onClick={() => { if (!novyLekar.jmeno) return; setTym(t => [...t, novyLekar]); setNovyLekar({ jmeno: "", titul: "", specializace: "", foto: "" }); }} style={{ marginTop: 4, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat lékaře</button>
                 </div>
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Specializace kliniky</label>

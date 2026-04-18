@@ -283,7 +283,11 @@ export default function PartnerDetailPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {tym.map((lekar, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#f7f4ef", borderRadius: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#fce4ec", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>👨‍⚕️</div>
+                      {lekar.foto ? (
+                        <img src={lekar.foto} style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #b91c1c" }} />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#fce4ec", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>👨‍⚕️</div>
+                      )}
                       <div>
                         <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "0.92rem" }}>{lekar.titul} {lekar.jmeno}</div>
                         {lekar.specializace && <div style={{ fontSize: "0.78rem", color: "#8a9e92", marginTop: 2 }}>{lekar.specializace}</div>}
@@ -298,13 +302,16 @@ export default function PartnerDetailPage() {
             {oteviraciDoba && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>Otevírací doba</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {Object.entries(oteviraciDoba).map(([den, h]) => (
-                    <div key={den} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", padding: "6px 10px", borderRadius: 8, background: h.closed ? "#fce4ec" : "#f7f4ef" }}>
-                      <span style={{ fontWeight: 600, color: "#1c2b22" }}>{den}</span>
-                      <span style={{ color: h.closed ? "#b91c1c" : "#4a5e52" }}>{h.closed ? "Zavřeno" : `${h.open} – ${h.close}`}</span>
-                    </div>
-                  ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {["Po", "Út", "St", "Čt", "Pá", "So", "Ne"].map(den => {
+                    const h = oteviraciDoba[den]; if (!h) return null;
+                    return (
+                      <div key={den} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", padding: "8px 12px", borderRadius: 8, background: h.closed ? "#fce4ec" : "#f7f4ef" }}>
+                        <span style={{ fontWeight: 600, color: "#1c2b22", width: 32 }}>{den}</span>
+                        <span style={{ color: h.closed ? "#b91c1c" : "#4a5e52" }}>{h.closed ? "Zavřeno" : `${h.open} – ${h.close}`}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
