@@ -5,7 +5,6 @@ import { supabase } from "./supabase";
 const TYPE_CONFIG = {
   hotel: { icon: "🏨", label: "Psí hotel", color: "#1a4fa0", light: "#e8eef8", cta: "Zavolat hotelu", ctaIcon: "📞", showReservation: true, priceLabel: "Cena za noc", priceKey: "price_per_night" },
   vencitel: { icon: "🦮", label: "Venčitel psů", color: "#2d6a4f", light: "#e8f5ef", cta: "Kontaktovat venčitele", ctaIcon: "📞", showReservation: true, priceLabel: "Cena za venčení", priceKey: "price_per_walk" },
-  hlidani: { icon: "🏠", label: "Hlídání zvířat", color: "#7b3fa0", light: "#f3e8f8", cta: "Kontaktovat hlídače", ctaIcon: "📞", showReservation: true, priceLabel: "Cena za den", priceKey: "price_per_day" },
   veterinar: { icon: "🩺", label: "Veterinární klinika", color: "#b91c1c", light: "#fce4ec", cta: "Zavolat klinice", ctaIcon: "📞", showReservation: false },
   prodejce: { icon: "🛍️", label: "Partnerský prodejce", color: "#e07b39", light: "#fdf0e6", cta: "Kontaktovat prodejce", ctaIcon: "📞", showReservation: false },
 };
@@ -98,7 +97,6 @@ export default function PartnerDetailPage() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
       const emailPayload = {
         _isReservation: true,
         _partnerName: partner.name,
@@ -120,32 +118,16 @@ export default function PartnerDetailPage() {
         shipping_price: 0,
         order_items: [],
       };
-
-      // 1. Email zákazníkovi — potvrzení rezervace
       await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-        body: JSON.stringify({
-          sellerEmail: resForm.email,
-          sellerName: resForm.name,
-          order: emailPayload,
-        }),
+        body: JSON.stringify({ sellerEmail: resForm.email, sellerName: resForm.name, order: emailPayload }),
       });
-
-      // 2. Email partnerovi — notifikace o nové rezervaci
       if (partner.email) {
         await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-          body: JSON.stringify({
-            sellerEmail: partner.email,
-            sellerName: partner.name,
-            order: {
-              ...emailPayload,
-              _isReservation: false,
-              _isPartnerReservationNotification: true,
-            },
-          }),
+          body: JSON.stringify({ sellerEmail: partner.email, sellerName: partner.name, order: { ...emailPayload, _isReservation: false, _isPartnerReservationNotification: true } }),
         });
       }
     } catch (e) { console.error("Email failed:", e); }
@@ -197,6 +179,11 @@ export default function PartnerDetailPage() {
   const nights = calcNights();
   const totalPrice = unitPrice * Math.max(nights, 1) * resForm.num_dogs;
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+
+  // Otevírací doba — veterináři mají přímo v opening_hours, ostatní v metadata.opening_hours
+  const oteviraciDoba = partner.opening_hours || partner.metadata?.opening_hours || null;
+  // Tým lékařů
+  const tym = partner.metadata?.tym || [];
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.88rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 5 };
@@ -289,11 +276,30 @@ export default function PartnerDetailPage() {
               </div>
             )}
 
-            {partner.metadata?.opening_hours && (
+            {/* TÝM LÉKAŘŮ */}
+            {tym.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>👨‍⚕️ Náš tým</h2>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {tym.map((lekar, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "#f7f4ef", borderRadius: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#fce4ec", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>👨‍⚕️</div>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "0.92rem" }}>{lekar.titul} {lekar.jmeno}</div>
+                        {lekar.specializace && <div style={{ fontSize: "0.78rem", color: "#8a9e92", marginTop: 2 }}>{lekar.specializace}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* OTEVÍRACÍ DOBA */}
+            {oteviraciDoba && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>Otevírací doba</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {Object.entries(partner.metadata.opening_hours).map(([den, h]) => (
+                  {Object.entries(oteviraciDoba).map(([den, h]) => (
                     <div key={den} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", padding: "6px 10px", borderRadius: 8, background: h.closed ? "#fce4ec" : "#f7f4ef" }}>
                       <span style={{ fontWeight: 600, color: "#1c2b22" }}>{den}</span>
                       <span style={{ color: h.closed ? "#b91c1c" : "#4a5e52" }}>{h.closed ? "Zavřeno" : `${h.open} – ${h.close}`}</span>
@@ -402,24 +408,19 @@ export default function PartnerDetailPage() {
                         {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n === 1 ? "pes" : n < 5 ? "psi" : "psů"}</option>)}
                       </select>
                     </div>
-
                     {nights > 0 && (
                       <div style={{ background: cfg.light, borderRadius: 10, padding: "12px 14px" }}>
                         <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{unitPrice} Kč × {nights} {nights === 1 ? "noc" : nights < 5 ? "noci" : "nocí"} × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
-                          <span>Celkem</span>
-                          <span>{totalPrice} Kč</span>
+                          <span>Celkem</span><span>{totalPrice} Kč</span>
                         </div>
                       </div>
                     )}
-
                     <div><label style={labelStyle}>Jméno a příjmení *</label><input style={inputStyle} value={resForm.name} onChange={e => setResForm(f => ({ ...f, name: e.target.value }))} placeholder="Jana Nováková" /></div>
                     <div><label style={labelStyle}>Email *</label><input type="email" style={inputStyle} value={resForm.email} onChange={e => setResForm(f => ({ ...f, email: e.target.value }))} placeholder="jana@email.cz" /></div>
                     <div><label style={labelStyle}>Telefon</label><input style={inputStyle} value={resForm.phone} onChange={e => setResForm(f => ({ ...f, phone: e.target.value }))} placeholder="+420 777 888 999" /></div>
                     <div><label style={labelStyle}>Poznámka</label><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={resForm.notes} onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))} placeholder="Speciální požadavky..." /></div>
-
                     {resMsg && <div style={{ fontSize: "0.85rem", color: "#b91c1c" }}>{resMsg}</div>}
-
                     <button onClick={handleReservation} disabled={resSaving} style={{ width: "100%", background: resSaving ? "#b5cec0" : cfg.color, color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 700, cursor: resSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                       {resSaving ? "Odesílám..." : `✓ Odeslat rezervaci (${totalPrice} Kč)`}
                     </button>
@@ -453,16 +454,10 @@ export default function PartnerDetailPage() {
                     {partner.address}, {partner.city}
                   </div>
                 )}
-                {partner.web && (
+                {(partner.web || partner.website) && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.88rem", color: "#4a5e52" }}>
                     <span style={{ width: 32, height: 32, borderRadius: 8, background: cfg.light, display: "flex", alignItems: "center", justifyContent: "center" }}>🌐</span>
-                    <a href={partner.web.startsWith("http") ? partner.web : `https://${partner.web}`} target="_blank" rel="noopener noreferrer" style={{ color: cfg.color, textDecoration: "none", fontWeight: 600 }}>{partner.web}</a>
-                  </div>
-                )}
-                {partner.instagram && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.88rem", color: "#4a5e52" }}>
-                    <span style={{ width: 32, height: 32, borderRadius: 8, background: cfg.light, display: "flex", alignItems: "center", justifyContent: "center" }}>📸</span>
-                    <a href={`https://instagram.com/${partner.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" style={{ color: cfg.color, textDecoration: "none", fontWeight: 600 }}>@{partner.instagram.replace("@", "")}</a>
+                    <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" style={{ color: cfg.color, textDecoration: "none", fontWeight: 600 }}>{partner.web || partner.website}</a>
                   </div>
                 )}
               </div>
@@ -471,8 +466,8 @@ export default function PartnerDetailPage() {
                   {cfg.ctaIcon} {cfg.cta}
                 </button>
               )}
-              {partner.web && (
-                <a href={partner.web.startsWith("http") ? partner.web : `https://${partner.web}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", background: "#f7f4ef", color: cfg.color, border: `1.5px solid ${cfg.color}40`, borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
+              {(partner.web || partner.website) && (
+                <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", background: "#f7f4ef", color: cfg.color, border: `1.5px solid ${cfg.color}40`, borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
                   🌐 Navštívit web
                 </a>
               )}
