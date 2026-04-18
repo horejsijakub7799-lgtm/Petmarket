@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 
 export default function AuthModal({ onClose, onAuthSuccess }) {
-  const navigate = useNavigate();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,9 +19,9 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError("Špatný e-mail nebo heslo."); setLoading(false); return; }
 
-    // Zkontroluj jestli je uživatel partner
     const userId = data.user?.id;
     if (userId) {
+      // Zkontroluj jestli je partner (hotel/venčitel/hlídač/vet)
       const { data: partnerProfile } = await supabase
         .from("partner_profiles")
         .select("id, type")
@@ -33,9 +31,8 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         .single();
 
       if (partnerProfile) {
-        setLoading(false);
         onClose();
-        navigate("/partner/dashboard");
+        window.location.href = "/partner/dashboard";
         return;
       }
 
@@ -49,9 +46,8 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         .single();
 
       if (sellerProfile) {
-        setLoading(false);
         onClose();
-        navigate("/seller/dashboard");
+        window.location.href = "/seller/dashboard";
         return;
       }
     }
@@ -119,7 +115,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(28,43,34,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20, backdropFilter: "blur(6px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, width: "100%", maxWidth: 420, boxShadow: "0 12px 40px rgba(44,80,58,0.18)", overflow: "hidden" }}>
 
-        {/* Header */}
         <div style={{ padding: "22px 24px 18px", borderBottom: "1px solid #ede8e0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
@@ -131,10 +126,8 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
           <button onClick={onClose} style={{ background: "#f7f4ef", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", fontSize: "1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
 
-        {/* Body */}
         <div style={{ padding: "24px 24px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Google */}
           {mode !== "reset" && (
             <button onClick={handleGoogle} disabled={loading} style={{ width: "100%", padding: "11px 16px", border: "1.5px solid #ede8e0", borderRadius: 10, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: "0.9rem", fontWeight: 600, color: "#1c2b22", fontFamily: "'DM Sans', sans-serif" }}
               onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
@@ -158,7 +151,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {/* Výběr typu účtu — jen při registraci */}
           {mode === "register" && (
             <div>
               <label style={labelStyle}>Typ účtu</label>
@@ -177,7 +169,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {/* Jméno */}
           {mode === "register" && (
             <div>
               <label style={labelStyle}>Celé jméno</label>
@@ -188,7 +179,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {/* E-mail */}
           <div>
             <label style={labelStyle}>E-mail</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jana@email.cz" onKeyDown={e => e.key === "Enter" && handleSubmit()} style={inputStyle}
@@ -197,7 +187,6 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             />
           </div>
 
-          {/* Heslo */}
           {mode !== "reset" && (
             <div>
               <label style={labelStyle}>Heslo</label>
@@ -208,16 +197,13 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {/* Error / Success */}
           {error && <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: "#880e4f" }}>⚠️ {error}</div>}
           {success && <div style={{ background: "#e8f5e9", border: "1px solid #a5d6a7", borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: "#1b5e20" }}>{success}</div>}
 
-          {/* Submit */}
           <button onClick={handleSubmit} disabled={loading} style={{ width: "100%", padding: "13px", background: loading ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, fontSize: "0.95rem", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
             {loading ? "Moment…" : titles[mode]}
           </button>
 
-          {/* Přepínání */}
           <div style={{ textAlign: "center", fontSize: "0.85rem", color: "#4a5e52", display: "flex", flexDirection: "column", gap: 8 }}>
             {mode === "login" && (
               <>
