@@ -2,15 +2,6 @@ import { useNavigate } from "react-router-dom";
 
 const PARTNERI = [
   {
-    id: "veterinar",
-    icon: "🩺",
-    title: "Veterinární klinika",
-    desc: "Zobrazujte svou kliniku na mapě, přijímejte dotazy od majitelů mazlíčků a budujte svou reputaci.",
-    price: "od 499 Kč/měsíc",
-    url: "/veterinar/registrace",
-    available: true,
-  },
-  {
     id: "hotel",
     icon: "🏨",
     title: "Psí hotel",
@@ -26,6 +17,24 @@ const PARTNERI = [
     desc: "Nabídněte své služby venčení psů v okolí. Oslovte majitele kteří nemají čas.",
     price: "od 199 Kč/měsíc",
     url: "/vencitel/registrace",
+    available: true,
+  },
+  {
+    id: "hlidani",
+    icon: "🏠",
+    title: "Hlídání zvířat",
+    desc: "Nabídněte hlídání mazlíčků u vás doma nebo u zákazníka. Ideální pro milovníky zvířat.",
+    price: "od 199 Kč/měsíc",
+    url: "/hlidani/registrace",
+    available: true,
+  },
+  {
+    id: "veterinar",
+    icon: "🩺",
+    title: "Veterinární klinika",
+    desc: "Zobrazujte svou kliniku na mapě, přijímejte dotazy od majitelů mazlíčků a budujte svou reputaci.",
+    price: "od 499 Kč/měsíc",
+    url: "/veterinar/registrace",
     available: true,
   },
   {
@@ -55,11 +64,16 @@ export default function PartneriPage() {
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
 
-      <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
+      <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", gap: 16, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
         <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer" }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
           <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.15rem", color: "#1c2b22" }}>Pet Market</span>
         </button>
+        <div style={{ marginLeft: "auto" }}>
+          <button onClick={() => navigate("/partner/dashboard")} style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1.5px solid #b7d9c7", borderRadius: 8, padding: "8px 16px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            Jsem už partner → Dashboard
+          </button>
+        </div>
       </nav>
 
       <div style={{ background: "linear-gradient(135deg, #2d6a4f 0%, #3a7d60 100%)", padding: "60px 24px", textAlign: "center" }}>
@@ -95,10 +109,10 @@ export default function PartneriPage() {
           <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 20 }}>Jak to funguje?</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 20 }}>
             {[
-              { icon: "📝", title: "1. Vyplníš formulář", desc: "Základní údaje o tvé firmě nebo službě." },
+              { icon: "📝", title: "1. Vyplníš formulář", desc: "Základní údaje o tvé firmě nebo službě. Zároveň si vytvoříš přihlašovací účet." },
               { icon: "✅", title: "2. Ověříme tě", desc: "Do 24 hodin zkontrolujeme vaše IČO a schválíme profil." },
               { icon: "💳", title: "3. Zaplatíš", desc: "Jednoduchá platba kartou, měsíční předplatné." },
-              { icon: "🚀", title: "4. Jsi live", desc: "Váš profil se okamžitě zobrazí tisícům zákazníků." },
+              { icon: "🚀", title: "4. Jsi live", desc: "Váš profil se okamžitě zobrazí tisícům zákazníků. Spravujte rezervace v dashboardu." },
             ].map(s => (
               <div key={s.title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ fontSize: "1.8rem" }}>{s.icon}</div>
@@ -107,6 +121,16 @@ export default function PartneriPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div style={{ marginTop: 24, background: "#e8eef8", borderRadius: 14, padding: "20px 24px", border: "1px solid #b7c9e8", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontWeight: 700, color: "#1a4fa0", fontSize: "0.95rem", marginBottom: 4 }}>Už jste registrovaný partner?</div>
+            <div style={{ color: "#4a5e52", fontSize: "0.85rem" }}>Přihlaste se do dashboardu a spravujte své rezervace a profil.</div>
+          </div>
+          <button onClick={() => navigate("/partner/dashboard")} style={{ background: "#1a4fa0", color: "#fff", border: "none", borderRadius: 10, padding: "12px 24px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>
+            Přejít do dashboardu →
+          </button>
         </div>
       </div>
     </div>
