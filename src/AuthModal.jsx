@@ -28,7 +28,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         .eq("user_id", userId)
         .eq("approved", true)
         .in("type", ["hotel", "vencitel"])
-        .single();
+        .maybeSingle();
 
       if (partnerProfile) {
         onClose();
@@ -42,7 +42,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         .select("id")
         .eq("user_id", userId)
         .eq("approved", true)
-        .single();
+        .maybeSingle();
 
       if (vetProfile) {
         onClose();
@@ -57,7 +57,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         .eq("user_id", userId)
         .eq("type", "seller")
         .eq("approved", true)
-        .single();
+        .maybeSingle();
 
       if (sellerProfile) {
         onClose();
