@@ -34,7 +34,7 @@ export default function AdminPage() {
   }, [user]);
 
   const fetchAll = async () => {
-    const { data: vets } = await supabase.from("vet_profiles").select("*, profiles(email)").order("created_at", { ascending: false });
+    const { data: vets } = await supabase.from("vet_profiles").select("*").order("created_at", { ascending: false });
     const { data: partners } = await supabase.from("partner_profiles").select("*, profiles(email)").order("created_at", { ascending: false });
     if (vets) setVetProfiles(vets);
     if (partners) setPartnerProfiles(partners);
