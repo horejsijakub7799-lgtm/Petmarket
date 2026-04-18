@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 
 export default function AuthModal({ onClose, onAuthSuccess }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,9 +18,45 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
   const handleLogin = async () => {
     if (!email || !password) { setError("Vyplň e-mail a heslo."); return; }
     setLoading(true); clearMessages();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setError("Špatný e-mail nebo heslo."); setLoading(false); return; }
+
+    // Zkontroluj jestli je uživatel partner
+    const userId = data.user?.id;
+    if (userId) {
+      const { data: partnerProfile } = await supabase
+        .from("partner_profiles")
+        .select("id, type")
+        .eq("user_id", userId)
+        .eq("approved", true)
+        .in("type", ["hotel", "vencitel", "hlidani", "veterinar"])
+        .single();
+
+      if (partnerProfile) {
+        setLoading(false);
+        onClose();
+        navigate("/partner/dashboard");
+        return;
+      }
+
+      // Zkontroluj jestli je seller
+      const { data: sellerProfile } = await supabase
+        .from("partner_profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("type", "seller")
+        .eq("approved", true)
+        .single();
+
+      if (sellerProfile) {
+        setLoading(false);
+        onClose();
+        navigate("/seller/dashboard");
+        return;
+      }
+    }
+
     setLoading(false);
-    if (error) { setError("Špatný e-mail nebo heslo."); return; }
     onAuthSuccess?.();
     onClose();
   };
@@ -125,30 +163,12 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             <div>
               <label style={labelStyle}>Typ účtu</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <button
-                  onClick={() => setRole("user")}
-                  style={{
-                    padding: "12px 10px", borderRadius: 12, cursor: "pointer",
-                    border: role === "user" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0",
-                    background: role === "user" ? "#e8f5ef" : "#fff",
-                    textAlign: "center", fontFamily: "'DM Sans', sans-serif",
-                    transition: "all 0.15s",
-                  }}
-                >
+                <button onClick={() => setRole("user")} style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", border: role === "user" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0", background: role === "user" ? "#e8f5ef" : "#fff", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
                   <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🐾</div>
                   <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "user" ? "#2d6a4f" : "#1c2b22" }}>Uživatel</div>
                   <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Nakupuji & prodávám</div>
                 </button>
-                <button
-                  onClick={() => setRole("vet")}
-                  style={{
-                    padding: "12px 10px", borderRadius: 12, cursor: "pointer",
-                    border: role === "vet" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0",
-                    background: role === "vet" ? "#e8f5ef" : "#fff",
-                    textAlign: "center", fontFamily: "'DM Sans', sans-serif",
-                    transition: "all 0.15s",
-                  }}
-                >
+                <button onClick={() => setRole("vet")} style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", border: role === "vet" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0", background: role === "vet" ? "#e8f5ef" : "#fff", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
                   <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🩺</div>
                   <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "vet" ? "#2d6a4f" : "#1c2b22" }}>Veterinář / Salon</div>
                   <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Profesionální účet</div>
