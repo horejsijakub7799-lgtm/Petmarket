@@ -322,10 +322,14 @@ export default function PetMarket() {
 
   useEffect(() => {
     if (!user) { setIsApprovedSeller(false); setIsPartner(false); return; }
-    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single()
+    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).maybeSingle()
       .then(({ data }) => setIsApprovedSeller(!!data));
-    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("approved", true).in("type", ["hotel", "vencitel", "veterinar"]).single()
-      .then(({ data }) => setIsPartner(!!data));
+    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("approved", true).in("type", ["hotel", "vencitel"]).maybeSingle()
+      .then(({ data }) => {
+        if (data) { setIsPartner(true); return; }
+        supabase.from("vet_profiles").select("id").eq("user_id", user.id).eq("approved", true).maybeSingle()
+          .then(({ data: vetData }) => setIsPartner(!!vetData));
+      });
   }, [user]);
 
   useEffect(() => {
