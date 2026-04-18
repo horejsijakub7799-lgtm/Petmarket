@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
-import { useAuth } from "./useAuth";
 
 const DNY = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 const SLUZBY = ["Celodenní hlídání", "Noční hlídání", "Venčení", "Koupání & grooming", "Veterinární dohled", "Individuální péče", "Skupinové hraní", "Transport"];
 
 export default function HotelRegister() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [fotky, setFotky] = useState([]);
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const [form, setForm] = useState({
+    email: "", password: "", passwordConfirm: "",
     name: "", ico: "", address: "", city: "", phone: "", web: "",
     description: "", capacity: "", price_per_night: "", accepts_sizes: [], sluzby: [],
     opening_hours: {
@@ -58,35 +58,56 @@ export default function HotelRegister() {
     setFotky(nf); setFotkyPreviews(nf.map(f => URL.createObjectURL(f)));
   };
 
+  const handleStep1Next = () => {
+    if (!form.email || !form.password) { setMsg("⚠️ Vyplň email a heslo."); return; }
+    if (form.password.length < 6) { setMsg("⚠️ Heslo musí mít alespoň 6 znaků."); return; }
+    if (form.password !== form.passwordConfirm) { setMsg("⚠️ Hesla se neshodují."); return; }
+    if (!form.name || !form.ico || !form.address || !form.city || !form.phone) { setMsg("⚠️ Vyplň všechna povinná pole."); return; }
+    setMsg(""); setStep(2);
+  };
+
   const handleSubmit = async () => {
-    if (!user) { setMsg("⚠️ Musíš být přihlášen."); return; }
     setSaving(true); setMsg("");
     try {
-      // Nahrání fotek
+      // 1. Vytvoření účtu
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+      });
+      if (authError) throw authError;
+      const userId = authData.user?.id;
+      if (!userId) throw new Error("Nepodařilo se vytvořit účet.");
+
+      // 2. Nahrání fotek
       const fotoUrls = [];
       for (const fotka of fotky) {
-        const fileName = `hotel/${user.id}/${Date.now()}_${fotka.name}`;
+        const fileName = `hotel/${userId}/${Date.now()}_${fotka.name}`;
         const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, fotka);
         if (uploadError) throw uploadError;
         const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
         fotoUrls.push(urlData.publicUrl);
       }
 
-      // 1. Uložení do partner_profiles (společná data)
+      // 3. Uložení do partner_profiles
       const { data: partner, error: partnerError } = await supabase
         .from("partner_profiles")
         .insert({
-          user_id: user.id,
+          user_id: userId,
           type: "hotel",
           name: form.name,
           ico: form.ico,
           address: form.address,
           city: form.city,
           phone: form.phone,
-          email: user.email,
+          email: form.email,
           website: form.web,
           description: form.description,
-          metadata: { sluzby: form.sluzby, opening_hours: form.opening_hours },
+          metadata: {
+            sluzby: form.sluzby,
+            opening_hours: form.opening_hours,
+            capacity: parseInt(form.capacity) || null,
+            price_per_night: parseFloat(form.price_per_night) || null,
+          },
           foto_urls: fotoUrls,
           tier: form.tier,
           approved: false,
@@ -96,7 +117,7 @@ export default function HotelRegister() {
 
       if (partnerError) throw partnerError;
 
-      // 2. Uložení do hotel_profiles (specifická data hotelu)
+      // 4. Uložení do hotel_profiles
       const { error: hotelError } = await supabase
         .from("hotel_profiles")
         .insert({
@@ -106,9 +127,32 @@ export default function HotelRegister() {
           accepts_sizes: form.accepts_sizes,
           amenities: form.sluzby,
         });
-
       if (hotelError) throw hotelError;
 
+      // 5. Email adminovi
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+          body: JSON.stringify({
+            sellerEmail: "horejsi.jakub7799@gmail.com",
+            sellerName: "Admin",
+            order: {
+              _isNewRegistration: true,
+              _registrantName: form.name,
+              _registrantType: "Psí hotel",
+              _registrantTier: form.tier,
+              buyer_email: form.email,
+              buyer_phone: form.phone,
+              buyer_address: `${form.address}, ${form.city}`,
+            },
+          }),
+        });
+      } catch (e) { console.error("Admin email failed:", e); }
+
+      setRegisteredEmail(form.email);
       setStep(4);
     } catch (err) { setMsg("❌ Chyba: " + err.message); }
     setSaving(false);
@@ -146,6 +190,18 @@ export default function HotelRegister() {
             <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.6rem", color: "#1c2b22", marginBottom: 6 }}>🏨 Registrace psího hotelu</h1>
             <p style={{ color: "#8a9e92", fontSize: "0.9rem", marginBottom: 28 }}>Po odeslání formulář ručně ověříme a do 24 hodin vás kontaktujeme.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+              <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7" }}>
+                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>🔐 Přihlašovací údaje do dashboardu</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div><label style={labelStyle}>Email *</label><input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="hotel@vas-hotel.cz" style={inputStyle} /></div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Heslo * (min. 6 znaků)</label><input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder="••••••••" style={inputStyle} /></div>
+                    <div><label style={labelStyle}>Heslo znovu *</label><input type="password" value={form.passwordConfirm} onChange={e => set("passwordConfirm", e.target.value)} placeholder="••••••••" style={inputStyle} /></div>
+                  </div>
+                </div>
+              </div>
+
               <div><label style={labelStyle}>Název hotelu *</label><input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Psí hotel U Palečka" style={inputStyle} /></div>
               <div><label style={labelStyle}>IČO *</label><input value={form.ico} onChange={e => set("ico", e.target.value)} placeholder="12345678" style={inputStyle} /><div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 5 }}>Ověřujeme přes ARES</div></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -170,7 +226,7 @@ export default function HotelRegister() {
               </div>
               <div><label style={labelStyle}>Popis</label><textarea value={form.description} onChange={e => set("description", e.target.value)} placeholder="Útulný psí hotel s velkou zahradou..." style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
               {msg && <div style={{ color: "#b91c1c", fontSize: "0.85rem" }}>{msg}</div>}
-              <button onClick={() => { if (!form.name || !form.ico || !form.address || !form.city || !form.phone) { setMsg("⚠️ Vyplň všechna povinná pole."); return; } setMsg(""); setStep(2); }} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Pokračovat →</button>
+              <button onClick={handleStep1Next} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Pokračovat →</button>
             </div>
           </div>
         )}
@@ -262,7 +318,12 @@ export default function HotelRegister() {
           <div style={{ background: "#fff", borderRadius: 20, padding: "48px 32px", boxShadow: "0 4px 20px rgba(44,80,58,0.08)", textAlign: "center" }}>
             <div style={{ fontSize: "4rem", marginBottom: 20 }}>🎉</div>
             <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.6rem", color: "#1c2b22", marginBottom: 12 }}>Žádost odeslána!</h2>
-            <p style={{ color: "#4a5e52", fontSize: "0.95rem", lineHeight: 1.7, marginBottom: 32 }}>Do <strong>24 hodin</strong> vás budeme kontaktovat na email <strong>{user?.email}</strong>.</p>
+            <p style={{ color: "#4a5e52", fontSize: "0.95rem", lineHeight: 1.7, marginBottom: 12 }}>
+              Do <strong>24 hodin</strong> vás budeme kontaktovat na email <strong>{registeredEmail}</strong>.
+            </p>
+            <p style={{ color: "#8a9e92", fontSize: "0.85rem", marginBottom: 32 }}>
+              Po schválení se přihlaste na <strong>petmarket-theta.vercel.app/partner/dashboard</strong> pomocí zadaného emailu a hesla.
+            </p>
             <button onClick={() => navigate("/")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px 32px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zpět na Pet Market</button>
           </div>
         )}
