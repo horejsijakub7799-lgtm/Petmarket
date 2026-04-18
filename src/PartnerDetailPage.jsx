@@ -98,34 +98,56 @@ export default function PartnerDetailPage() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      const emailPayload = {
+        _isReservation: true,
+        _partnerName: partner.name,
+        _partnerPhone: partner.phone,
+        _partnerAddress: `${partner.address || ""}, ${partner.city}`,
+        _partnerConditions: partner.conditions || "",
+        _dateFrom: resForm.date_from,
+        _dateTo: resForm.date_to,
+        _numDogs: resForm.num_dogs,
+        _nights: nights,
+        _totalPrice: totalPrice,
+        buyer_name: resForm.name,
+        buyer_email: resForm.email,
+        buyer_phone: resForm.phone || "",
+        notes: resForm.notes || "",
+        buyer_address: "",
+        total_price: totalPrice,
+        shipping_name: "",
+        shipping_price: 0,
+        order_items: [],
+      };
+
+      // 1. Email zákazníkovi — potvrzení rezervace
       await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
         body: JSON.stringify({
           sellerEmail: resForm.email,
           sellerName: resForm.name,
-          order: {
-            _isReservation: true,
-            _partnerName: partner.name,
-            _partnerPhone: partner.phone,
-            _partnerAddress: `${partner.address || ""}, ${partner.city}`,
-            _partnerConditions: partner.conditions || "",
-            _dateFrom: resForm.date_from,
-            _dateTo: resForm.date_to,
-            _numDogs: resForm.num_dogs,
-            _nights: nights,
-            _totalPrice: totalPrice,
-            buyer_name: resForm.name,
-            buyer_email: resForm.email,
-            buyer_phone: resForm.phone || "",
-            buyer_address: "",
-            total_price: totalPrice,
-            shipping_name: "",
-            shipping_price: 0,
-            order_items: [],
-          },
+          order: emailPayload,
         }),
       });
+
+      // 2. Email partnerovi — notifikace o nové rezervaci
+      if (partner.email) {
+        await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+          body: JSON.stringify({
+            sellerEmail: partner.email,
+            sellerName: partner.name,
+            order: {
+              ...emailPayload,
+              _isReservation: false,
+              _isPartnerReservationNotification: true,
+            },
+          }),
+        });
+      }
     } catch (e) { console.error("Email failed:", e); }
 
     setResSaving(false);

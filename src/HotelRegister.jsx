@@ -83,6 +83,7 @@ export default function HotelRegister() {
           address: form.address,
           city: form.city,
           phone: form.phone,
+          email: user.email,
           website: form.web,
           description: form.description,
           metadata: { sluzby: form.sluzby, opening_hours: form.opening_hours },

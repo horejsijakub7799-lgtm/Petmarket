@@ -75,6 +75,7 @@ export default function VencitelRegister() {
           address: form.address,
           city: form.city,
           phone: form.phone,
+          email: user.email,
           website: form.web,
           description: form.description,
           metadata: { experience: form.experience, sluzby: form.sluzby, zvirata: form.zvirata },

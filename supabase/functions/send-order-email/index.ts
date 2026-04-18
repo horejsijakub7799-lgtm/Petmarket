@@ -51,8 +51,88 @@ serve(async (req) => {
         </div>
       </div>
     `;
+
+  } else if (order._isPartnerReservationNotification) {
+    subject = `📅 Nová rezervace — ${order.buyer_name} (${order._dateFrom} – ${order._dateTo})`;
+    emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1a4fa0; padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 1.4rem;">📅 Nová rezervace!</h1>
+        </div>
+        <div style="background: #f7f4ef; padding: 24px; border-radius: 0 0 12px 12px;">
+          <p style="color: #4a5e52;">Ahoj <strong>${sellerName}</strong>! Máš novou rezervaci čekající na schválení.</p>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">👤 Zákazník</h2>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>${order.buyer_name}</strong></p>
+            <p style="margin: 4px 0; color: #4a5e52;">📧 ${order.buyer_email}</p>
+            <p style="margin: 4px 0; color: #4a5e52;">📞 ${order.buyer_phone || "—"}</p>
+            ${order.notes ? `<p style="margin: 8px 0 0; color: #4a5e52;"><strong>Poznámka:</strong> ${order.notes}</p>` : ""}
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">📅 Detaily rezervace</h2>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Příjezd:</strong> ${order._dateFrom}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Odjezd:</strong> ${order._dateTo}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Počet psů:</strong> ${order._numDogs}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Počet nocí:</strong> ${order._nights}</p>
+            <p style="margin: 12px 0 0; color: #1a4fa0; font-weight: 700; font-size: 1.1rem;">Celková cena: ${order._totalPrice} Kč</p>
+          </div>
+          <div style="background: #fff8e1; border-radius: 10px; padding: 14px 18px; margin: 16px 0; border: 1px solid #f5c99a;">
+            <p style="margin: 0; color: #e07b39; font-size: 0.9rem;">⏳ Rezervace čeká na tvoje schválení nebo zamítnutí v dashboardu.</p>
+          </div>
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://petmarket-theta.vercel.app/partner/dashboard" style="background: #1a4fa0; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 0.95rem;">Přejít do dashboardu →</a>
+          </div>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">Pet Market · Tržiště pro mazlíčky · Celá ČR</p>
+        </div>
+      </div>
+    `;
+
+  } else if (order._isReservationStatusUpdate) {
+    const approved = order._status === "approved";
+    subject = approved
+      ? `🎉 Vaše rezervace byla potvrzena — ${order._partnerName}`
+      : `❌ Vaše rezervace byla zamítnuta — ${order._partnerName}`;
+    emailHtml = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: ${approved ? "#2d6a4f" : "#b91c1c"}; padding: 24px; border-radius: 12px 12px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 1.4rem;">${approved ? "🎉 Rezervace potvrzena!" : "❌ Rezervace zamítnuta"}</h1>
+        </div>
+        <div style="background: #f7f4ef; padding: 24px; border-radius: 0 0 12px 12px;">
+          <p style="color: #4a5e52;">Ahoj <strong>${sellerName}</strong>!</p>
+          <p style="color: #4a5e52; margin-bottom: 16px;">
+            ${approved
+              ? `Tvoje rezervace v <strong>${order._partnerName}</strong> byla <strong>potvrzena</strong>. Těšíme se na tebe!`
+              : `Tvoje rezervace v <strong>${order._partnerName}</strong> byla bohužel <strong>zamítnuta</strong>. Pro více informací kontaktuj partnera přímo.`
+            }
+          </p>
+          <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
+            <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">📅 Detaily rezervace</h2>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Partner:</strong> ${order._partnerName}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Adresa:</strong> ${order._partnerAddress}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Telefon:</strong> ${order._partnerPhone}</p>
+            <p style="margin: 12px 0 4px; color: #4a5e52;"><strong>Příjezd:</strong> ${order._dateFrom}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Odjezd:</strong> ${order._dateTo}</p>
+            <p style="margin: 4px 0; color: #4a5e52;"><strong>Počet psů:</strong> ${order._numDogs}</p>
+            <p style="margin: 8px 0 0; color: ${approved ? "#2d6a4f" : "#b91c1c"}; font-weight: 700; font-size: 1.1rem;">Celková cena: ${order._totalPrice} Kč</p>
+          </div>
+          ${approved ? `
+          <div style="background: #e8f5ef; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
+            <p style="margin: 0; color: #2d6a4f; font-size: 0.9rem;">✅ Partner tě brzy kontaktuje s dalšími informacemi. Pokud máš dotazy, zavolej na 📞 ${order._partnerPhone}.</p>
+          </div>
+          ` : `
+          <div style="background: #fce4ec; border-radius: 10px; padding: 14px 18px; margin: 16px 0;">
+            <p style="margin: 0; color: #b91c1c; font-size: 0.9rem;">Pro více informací kontaktuj partnera na 📞 ${order._partnerPhone}.</p>
+          </div>
+          `}
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="https://petmarket-theta.vercel.app" style="background: #2d6a4f; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 0.95rem;">Zpět na Pet Market →</a>
+          </div>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">Pet Market · Tržiště pro mazlíčky · Celá ČR</p>
+        </div>
+      </div>
+    `;
+
   } else if (order._isNewRegistration) {
-    // Email adminovi o nové registraci
     subject = `🔔 Nová registrace partnera — ${order._registrantName}`;
     emailHtml = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -75,8 +155,8 @@ serve(async (req) => {
         </div>
       </div>
     `;
+
   } else if (order._isApproval) {
-    // Email o schválení profilu
     subject = `🎉 Váš profil na Pet Market byl schválen!`;
     emailHtml = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -86,26 +166,21 @@ serve(async (req) => {
         <div style="background: #f7f4ef; padding: 24px; border-radius: 0 0 12px 12px;">
           <p style="color: #4a5e52; font-size: 1rem;">Ahoj <strong>${sellerName}</strong>! 🎉</p>
           <p style="color: #4a5e52;">Tvůj profil <strong>${order._approvalType}</strong> na Pet Market byl právě schválen adminem.</p>
-          
           <div style="background: white; border-radius: 10px; padding: 18px; margin: 16px 0;">
             <h2 style="color: #1c2b22; font-size: 1rem; margin: 0 0 12px;">✅ Co teď?</h2>
             <p style="margin: 4px 0; color: #4a5e52;">• Tvůj profil je nyní viditelný pro zákazníky na Pet Market</p>
             <p style="margin: 4px 0; color: #4a5e52;">• Přihlaš se a dokončení nastavení svého profilu</p>
             <p style="margin: 4px 0; color: #4a5e52;">• Zákazníci tě mohou začít kontaktovat</p>
           </div>
-
           <div style="text-align: center; margin: 24px 0;">
-            <a href="https://petmarket-theta.vercel.app" style="background: #2d6a4f; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 0.95rem;">Přejít na Pet Market →</a>
+            <a href="https://petmarket-theta.vercel.app/partner/dashboard" style="background: #2d6a4f; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 0.95rem;">Přejít do dashboardu →</a>
           </div>
-
-          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">
-            Pet Market · Tržiště pro mazlíčky · Celá ČR
-          </p>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">Pet Market · Tržiště pro mazlíčky · Celá ČR</p>
         </div>
       </div>
     `;
+
   } else {
-    // Email o nové objednávce
     subject = `🐾 Nová objednávka — ${order.buyer_name} (${order.total_price} Kč)`;
     emailHtml = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -138,9 +213,7 @@ serve(async (req) => {
               💡 <a href="https://petmarket-theta.vercel.app/seller/dashboard" style="color: #2d6a4f;">Přejít do Seller Dashboardu</a>
             </p>
           </div>
-          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">
-            Pet Market · Tržiště pro mazlíčky · Celá ČR
-          </p>
+          <p style="color: #8a9e92; font-size: 0.8rem; text-align: center; margin-top: 24px;">Pet Market · Tržiště pro mazlíčky · Celá ČR</p>
         </div>
       </div>
     `;

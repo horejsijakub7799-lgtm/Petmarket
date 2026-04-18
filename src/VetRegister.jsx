@@ -98,6 +98,7 @@ export default function VetRegister() {
         address: form.address,
         city: form.city,
         phone: form.phone,
+        email: user.email,
         web: form.web,
         description: form.description,
         specializations: form.specializations,
@@ -119,7 +120,6 @@ export default function VetRegister() {
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
 
-      {/* NAV */}
       <nav style={{ background: "#fff", borderBottom: "1px solid #ede8e0", height: 64, display: "flex", alignItems: "center", padding: "0 32px", gap: 16, boxShadow: "0 1px 12px rgba(44,80,58,0.07)" }}>
         <button onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer" }}>
           <div style={{ width: 38, height: 38, borderRadius: 10, background: "#2d6a4f", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>🐾</div>
@@ -130,7 +130,6 @@ export default function VetRegister() {
 
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 24px" }}>
 
-        {/* PROGRESS */}
         {step < 4 && (
           <div style={{ display: "flex", gap: 8, marginBottom: 36, alignItems: "center" }}>
             {["Základní info", "Specializace & hodiny", "Fotky & plán"].map((label, i) => (
@@ -143,7 +142,6 @@ export default function VetRegister() {
           </div>
         )}
 
-        {/* STEP 1 — ZÁKLADNÍ INFO */}
         {step === 1 && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "32px", boxShadow: "0 4px 20px rgba(44,80,58,0.08)" }}>
             <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.6rem", color: "#1c2b22", marginBottom: 6 }}>Registrace kliniky</h1>
@@ -166,7 +164,6 @@ export default function VetRegister() {
           </div>
         )}
 
-        {/* STEP 2 — SPECIALIZACE & HODINY */}
         {step === 2 && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "32px", boxShadow: "0 4px 20px rgba(44,80,58,0.08)" }}>
             <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Specializace & otevírací doba</h2>
@@ -207,12 +204,10 @@ export default function VetRegister() {
           </div>
         )}
 
-        {/* STEP 3 — FOTKY & PLÁN */}
         {step === 3 && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "32px", boxShadow: "0 4px 20px rgba(44,80,58,0.08)" }}>
             <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>Fotky & výběr plánu</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              {/* FOTKY */}
               <div>
                 <label style={labelStyle}>Fotky kliniky (max. 8)</label>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
@@ -231,7 +226,6 @@ export default function VetRegister() {
                 </div>
               </div>
 
-              {/* PLÁN */}
               <div>
                 <label style={labelStyle}>Vyberte plán</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 8 }}>
@@ -265,7 +259,6 @@ export default function VetRegister() {
           </div>
         )}
 
-        {/* STEP 4 — POTVRZENÍ */}
         {step === 4 && (
           <div style={{ background: "#fff", borderRadius: 20, padding: "48px 32px", boxShadow: "0 4px 20px rgba(44,80,58,0.08)", textAlign: "center" }}>
             <div style={{ fontSize: "4rem", marginBottom: 20 }}>🎉</div>
