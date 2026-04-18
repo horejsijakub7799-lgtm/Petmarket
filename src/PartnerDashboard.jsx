@@ -24,10 +24,8 @@ const BOOST_PLANS = [
 
 const DNY = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
 
-// Dynamické menu podle typu
 const getMenu = (type, pendingCount, isBoosted) => {
   const base = [{ id: "prehled", label: "Přehled", icon: "📊" }];
-
   if (type === "hotel" || type === "vencitel") {
     base.push({ id: "rezervace", label: "Rezervace", icon: "📅", badge: pendingCount > 0 ? pendingCount : null });
   }
@@ -38,11 +36,9 @@ const getMenu = (type, pendingCount, isBoosted) => {
     base.push({ id: "oteviraci_doba", label: "Otevírací doba", icon: "🕐" });
     base.push({ id: "tym", label: "Tým & specializace", icon: "👨‍⚕️" });
   }
-
   base.push({ id: "fotky", label: "Fotky", icon: "📷" });
   base.push({ id: "propagace", label: "Propagace", icon: "🔥", badge: isBoosted ? "TOP" : null });
   base.push({ id: "profil", label: "Můj profil", icon: "✏️" });
-
   return base;
 };
 
@@ -51,36 +47,24 @@ export default function PartnerDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("prehled");
   const [partnerProfile, setPartnerProfile] = useState(null);
+  const [isVet, setIsVet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reservations, setReservations] = useState([]);
   const [expandedRes, setExpandedRes] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState("");
-
-  // Edit profilu
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
-
-  // Fotky
   const [fotkyUploading, setFotkyUploading] = useState(false);
   const [fotkyMsg, setFotkyMsg] = useState("");
-
-  // Propagace
   const [selectedPlan, setSelectedPlan] = useState("14");
   const [boostMsg, setBoostMsg] = useState("");
   const [boostSending, setBoostSending] = useState(false);
-
-  // Venčitel — služby
   const [sluzbyForm, setSluzbyForm] = useState(null);
-  const [sluzbyMsg, setSluzbyMsg] = useState("");
   const [sluzbyMsg2, setSluzbyMsg2] = useState("");
-
-  // Veterinář — otevírací doba
   const [oteviraciDoba, setOteviraciDoba] = useState(null);
   const [oteviraciMsg, setOteviraciMsg] = useState("");
-
-  // Veterinář — tým
   const [tym, setTym] = useState([]);
   const [specializace, setSpecializace] = useState([]);
   const [novyLekar, setNovyLekar] = useState({ jmeno: "", titul: "", specializace: "" });
@@ -94,27 +78,46 @@ export default function PartnerDashboard() {
 
   const fetchPartnerProfile = async () => {
     setLoading(true);
-    const { data } = await supabase
+
+    // Nejdřív zkus partner_profiles (hotel, venčitel)
+    let { data } = await supabase
       .from("partner_profiles")
       .select("*")
       .eq("user_id", user.id)
       .eq("approved", true)
-      .in("type", ["hotel", "vencitel", "veterinar"])
+      .in("type", ["hotel", "vencitel"])
       .single();
 
+    let vetMode = false;
+
+    // Pokud není v partner_profiles, zkus vet_profiles
+    if (!data) {
+      const { data: vetData } = await supabase
+        .from("vet_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("approved", true)
+        .single();
+      if (vetData) {
+        data = { ...vetData, type: "veterinar", name: vetData.clinic_name };
+        vetMode = true;
+      }
+    }
+
     if (!data) { navigate("/partneri"); return; }
+
+    setIsVet(vetMode);
     setPartnerProfile(data);
     setEditForm({
       name: data.name || "",
       phone: data.phone || "",
       address: data.address || "",
       city: data.city || "",
-      website: data.website || "",
+      website: data.website || data.web || "",
       description: data.description || "",
       email: data.email || "",
     });
 
-    // Venčitel — služby
     if (data.type === "vencitel") {
       setSluzbyForm({
         price_per_walk: data.metadata?.price_per_walk || "",
@@ -127,7 +130,6 @@ export default function PartnerDashboard() {
       });
     }
 
-    // Veterinář — otevírací doba
     if (data.type === "veterinar") {
       setOteviraciDoba(data.opening_hours || {
         Po: { open: "08:00", close: "17:00", closed: false },
@@ -142,9 +144,11 @@ export default function PartnerDashboard() {
       setSpecializace(data.specializations || []);
     }
 
-    fetchReservations(data.id);
+    if (!vetMode) fetchReservations(data.id);
     setLoading(false);
   };
+
+  const getTable = () => isVet ? "vet_profiles" : "partner_profiles";
 
   const fetchReservations = async (partnerId) => {
     const { data } = await supabase.from("reservations").select("*").eq("partner_id", partnerId).order("created_at", { ascending: false });
@@ -185,13 +189,17 @@ export default function PartnerDashboard() {
 
   const handleSaveProfile = async () => {
     setEditSaving(true); setEditMsg("");
-    const { error } = await supabase.from("partner_profiles").update({
+    const updateData = isVet ? {
+      clinic_name: editForm.name, phone: editForm.phone, address: editForm.address,
+      city: editForm.city, web: editForm.website, description: editForm.description, email: editForm.email,
+    } : {
       name: editForm.name, phone: editForm.phone, address: editForm.address,
       city: editForm.city, website: editForm.website, description: editForm.description, email: editForm.email,
-    }).eq("id", partnerProfile.id);
+    };
+    const { error } = await supabase.from(getTable()).update(updateData).eq("id", partnerProfile.id);
     if (error) { setEditMsg("❌ Chyba: " + error.message); setEditSaving(false); return; }
     setEditMsg("✅ Profil uložen!");
-    setPartnerProfile(p => ({ ...p, ...editForm }));
+    setPartnerProfile(p => ({ ...p, ...editForm, name: editForm.name }));
     setTimeout(() => setEditMsg(""), 3000);
     setEditSaving(false);
   };
@@ -208,7 +216,7 @@ export default function PartnerDashboard() {
 
   const handleSaveOteviraciDoba = async () => {
     setOteviraciMsg("");
-    const { error } = await supabase.from("partner_profiles").update({ opening_hours: oteviraciDoba }).eq("id", partnerProfile.id);
+    const { error } = await supabase.from(getTable()).update({ opening_hours: oteviraciDoba }).eq("id", partnerProfile.id);
     if (error) { setOteviraciMsg("❌ Chyba: " + error.message); return; }
     setOteviraciMsg("✅ Otevírací doba uložena!");
     setTimeout(() => setOteviraciMsg(""), 3000);
@@ -217,7 +225,7 @@ export default function PartnerDashboard() {
   const handleSaveTym = async () => {
     setTymMsg("");
     const updatedMetadata = { ...(partnerProfile.metadata || {}), tym };
-    const { error } = await supabase.from("partner_profiles").update({ metadata: updatedMetadata, specializations: specializace }).eq("id", partnerProfile.id);
+    const { error } = await supabase.from(getTable()).update({ metadata: updatedMetadata, specializations: specializace }).eq("id", partnerProfile.id);
     if (error) { setTymMsg("❌ Chyba: " + error.message); return; }
     setTymMsg("✅ Tým uložen!");
     setPartnerProfile(p => ({ ...p, metadata: updatedMetadata, specializations: specializace }));
@@ -251,7 +259,7 @@ export default function PartnerDashboard() {
         newUrls.push(urlData.publicUrl);
       }
       const updatedUrls = [...(partnerProfile.foto_urls || []), ...newUrls];
-      const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
+      const { error } = await supabase.from(getTable()).update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
       if (error) throw error;
       setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls }));
       setFotkyMsg("✅ Fotky nahrány!");
@@ -262,7 +270,7 @@ export default function PartnerDashboard() {
 
   const handleFotkaDelete = async (url) => {
     const updatedUrls = (partnerProfile.foto_urls || []).filter(u => u !== url);
-    const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
+    const { error } = await supabase.from(getTable()).update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
     if (error) { setFotkyMsg("❌ Chyba: " + error.message); return; }
     setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls }));
   };
@@ -270,7 +278,7 @@ export default function PartnerDashboard() {
   const handleSetCoverPhoto = async (url) => {
     const otherUrls = (partnerProfile.foto_urls || []).filter(u => u !== url);
     const updatedUrls = [url, ...otherUrls];
-    const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls, cover_photo: url }).eq("id", partnerProfile.id);
+    const { error } = await supabase.from(getTable()).update({ foto_urls: updatedUrls, cover_photo: url }).eq("id", partnerProfile.id);
     if (error) { setFotkyMsg("❌ Chyba: " + error.message); return; }
     setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls, cover_photo: url }));
     setFotkyMsg("✅ Titulní fotka nastavena!");
@@ -308,7 +316,6 @@ export default function PartnerDashboard() {
   const now = new Date();
   const isBoosted = partnerProfile?.boosted_until && new Date(partnerProfile.boosted_until) > now;
   const boostedUntil = partnerProfile?.boosted_until ? new Date(partnerProfile.boosted_until) : null;
-
   const menu = partnerProfile ? getMenu(partnerProfile.type, pending.length, isBoosted) : [];
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
@@ -341,8 +348,6 @@ export default function PartnerDashboard() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 24 }}>
-
-        {/* Sidebar */}
         <div style={{ width: 220, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1px solid #ede8e0" }}>
             {menu.map((item, i) => (
@@ -359,10 +364,7 @@ export default function PartnerDashboard() {
           </div>
         </div>
 
-        {/* Obsah */}
         <div style={{ flex: 1 }}>
-
-          {/* PŘEHLED */}
           {activeTab === "prehled" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {isBoosted && (
@@ -374,8 +376,6 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               )}
-
-              {/* Veterinář má jiný přehled */}
               {partnerProfile?.type === "veterinar" ? (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   {[
@@ -407,7 +407,6 @@ export default function PartnerDashboard() {
                   ))}
                 </div>
               )}
-
               {pending.length > 0 && partnerProfile?.type !== "veterinar" && (
                 <div style={{ background: "#fff8e1", borderRadius: 16, padding: "20px 24px", border: "1px solid #f5c99a" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -428,7 +427,6 @@ export default function PartnerDashboard() {
                   ))}
                 </div>
               )}
-
               {partnerProfile?.type === "veterinar" && (
                 <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #ede8e0" }}>
                   <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.1rem", color: "#1c2b22", marginBottom: 14 }}>Rychlý přehled</h2>
@@ -436,7 +434,7 @@ export default function PartnerDashboard() {
                     {[
                       { label: "Kontakt", value: partnerProfile.phone || "—" },
                       { label: "Adresa", value: `${partnerProfile.address || "—"}, ${partnerProfile.city || ""}` },
-                      { label: "Web", value: partnerProfile.website || "—" },
+                      { label: "Web", value: partnerProfile.website || partnerProfile.web || "—" },
                     ].map(({ label, value }) => (
                       <div key={label} style={{ display: "flex", gap: 12, fontSize: "0.88rem" }}>
                         <span style={{ color: "#8a9e92", minWidth: 80 }}>{label}:</span>
@@ -449,7 +447,6 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* REZERVACE (jen hotel + venčitel) */}
           {activeTab === "rezervace" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {msg && <div style={{ background: msg.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${msg.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 12, padding: "14px 20px", fontSize: "0.9rem", color: msg.includes("❌") ? "#880e4f" : "#1b5e20", fontWeight: 600 }}>{msg}</div>}
@@ -487,7 +484,6 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* MOJE SLUŽBY (jen venčitel) */}
           {activeTab === "sluzby" && sluzbyForm && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>⚙️ Moje služby</h2>
@@ -507,14 +503,13 @@ export default function PartnerDashboard() {
                     <button onClick={() => setSluzbyForm(f => ({ ...f, group_walks: !f.group_walks }))} style={chipStyle(sluzbyForm.group_walks)}>👥 Skupinové procházky</button>
                   </div>
                 </div>
-                <div><label style={labelStyle}>Zkušenosti & certifikáty</label><textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={sluzbyForm.experience} onChange={e => setSluzbyForm(f => ({ ...f, experience: e.target.value }))} placeholder="Např. 5 let zkušeností, absolvovaný kurz kynologie..." /></div>
+                <div><label style={labelStyle}>Zkušenosti & certifikáty</label><textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={sluzbyForm.experience} onChange={e => setSluzbyForm(f => ({ ...f, experience: e.target.value }))} placeholder="Např. 5 let zkušeností..." /></div>
                 {sluzbyMsg2 && <div style={{ background: sluzbyMsg2.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${sluzbyMsg2.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: sluzbyMsg2.includes("❌") ? "#880e4f" : "#1b5e20", fontWeight: 600 }}>{sluzbyMsg2}</div>}
                 <button onClick={handleSaveSluzby} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✓ Uložit změny</button>
               </div>
             </div>
           )}
 
-          {/* OTEVÍRACÍ DOBA (jen veterinář) */}
           {activeTab === "oteviraci_doba" && oteviraciDoba && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>🕐 Otevírací doba</h2>
@@ -538,12 +533,10 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* TÝM & SPECIALIZACE (jen veterinář) */}
           {activeTab === "tym" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>👨‍⚕️ Tým lékařů</h2>
-
                 {tym.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
                     {tym.map((lekar, i) => (
@@ -558,7 +551,6 @@ export default function PartnerDashboard() {
                     ))}
                   </div>
                 )}
-
                 <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "18px", border: "1px solid #b7d9c7", marginBottom: 16 }}>
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Přidat lékaře</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr 2fr", gap: 10 }}>
@@ -568,7 +560,6 @@ export default function PartnerDashboard() {
                   </div>
                   <button onClick={() => { if (!novyLekar.jmeno) return; setTym(t => [...t, novyLekar]); setNovyLekar({ jmeno: "", titul: "", specializace: "" }); }} style={{ marginTop: 12, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Přidat lékaře</button>
                 </div>
-
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>Specializace kliniky</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -577,14 +568,12 @@ export default function PartnerDashboard() {
                     ))}
                   </div>
                 </div>
-
                 {tymMsg && <div style={{ background: tymMsg.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${tymMsg.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: tymMsg.includes("❌") ? "#880e4f" : "#1b5e20", fontWeight: 600, marginBottom: 16 }}>{tymMsg}</div>}
                 <button onClick={handleSaveTym} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", width: "100%" }}>✓ Uložit tým & specializace</button>
               </div>
             </div>
           )}
 
-          {/* FOTKY */}
           {activeTab === "fotky" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>📷 Fotky profilu</h2>
@@ -613,7 +602,6 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* PROPAGACE */}
           {activeTab === "propagace" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {isBoosted ? (
@@ -657,7 +645,6 @@ export default function PartnerDashboard() {
             </div>
           )}
 
-          {/* PROFIL */}
           {activeTab === "profil" && editForm && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>✏️ Upravit profil</h2>
@@ -695,7 +682,6 @@ export default function PartnerDashboard() {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

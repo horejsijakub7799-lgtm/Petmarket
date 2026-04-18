@@ -21,13 +21,13 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
 
     const userId = data.user?.id;
     if (userId) {
-      // Zkontroluj jestli je partner (hotel/venčitel/hlídač/vet)
+      // Zkontroluj partner_profiles (hotel/venčitel)
       const { data: partnerProfile } = await supabase
         .from("partner_profiles")
         .select("id, type")
         .eq("user_id", userId)
         .eq("approved", true)
-        .in("type", ["hotel", "vencitel", "hlidani", "veterinar"])
+        .in("type", ["hotel", "vencitel"])
         .single();
 
       if (partnerProfile) {
@@ -36,7 +36,21 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
         return;
       }
 
-      // Zkontroluj jestli je seller
+      // Zkontroluj vet_profiles (veterináři)
+      const { data: vetProfile } = await supabase
+        .from("vet_profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("approved", true)
+        .single();
+
+      if (vetProfile) {
+        onClose();
+        window.location.href = "/partner/dashboard";
+        return;
+      }
+
+      // Zkontroluj seller
       const { data: sellerProfile } = await supabase
         .from("partner_profiles")
         .select("id")
