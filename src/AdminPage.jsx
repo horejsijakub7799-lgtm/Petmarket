@@ -224,7 +224,7 @@ export default function AdminPage() {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
                   {[
-                    { label: "Email uživatele", value: selected.profiles?.email },
+                    { label: "Email uživatele", value: selected.email || selected.profiles?.email },
                     { label: "IČO", value: selected.ico || "—" },
                     { label: "Adresa", value: `${selected.address}, ${selected.city}` },
                     { label: "Telefon", value: selected.phone },

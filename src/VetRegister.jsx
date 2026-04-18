@@ -245,8 +245,8 @@ export default function VetRegister() {
                 <label style={labelStyle}>Vyberte plán</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 8 }}>
                   {[
-                    { id: "basic", name: "Basic", price: "499 Kč/měsíc", features: ["Profil v adresáři", "Zobrazení na mapě", "Otevírací doba", "Hodnocení zákazníků"] },
-                    { id: "premium", name: "Premium", price: "999 Kč/měsíc", features: ["Vše z Basic", "Chat se zákazníky", "Zvýraznění na mapě", "Prioritní zobrazení", "Badge Ověřená klinika", "Statistiky profilu"] },
+                    { id: "basic", name: "Basic", price: "1 490 Kč/měsíc", features: ["Profil v adresáři", "Zobrazení na mapě", "Otevírací doba", "Hodnocení zákazníků"] },
+                    { id: "premium", name: "Premium", price: "2 490 Kč/měsíc", features: ["Vše z Basic", "Chat se zákazníky", "Zvýraznění na mapě", "Prioritní zobrazení", "Badge Ověřená klinika", "Statistiky profilu"] },
                   ].map(plan => (
                     <div key={plan.id} onClick={() => set("tier", plan.id)} style={{ border: `2px solid ${form.tier === plan.id ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 14, padding: "20px", cursor: "pointer", background: form.tier === plan.id ? "#f2faf6" : "#fff" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
