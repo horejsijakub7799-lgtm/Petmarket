@@ -20,7 +20,14 @@ const MENU = [
   { id: "prehled", label: "Přehled", icon: "📊" },
   { id: "rezervace", label: "Rezervace", icon: "📅" },
   { id: "fotky", label: "Fotky", icon: "📷" },
+  { id: "propagace", label: "Propagace", icon: "🔥" },
   { id: "profil", label: "Můj profil", icon: "✏️" },
+];
+
+const BOOST_PLANS = [
+  { id: "7", label: "7 dní", price: 149, days: 7, desc: "Ideální pro otestování" },
+  { id: "30", label: "30 dní", price: 399, days: 30, desc: "Nejoblíbenější", popular: true },
+  { id: "90", label: "90 dní", price: 899, days: 90, desc: "Nejlepší hodnota" },
 ];
 
 export default function PartnerDashboard() {
@@ -34,14 +41,16 @@ export default function PartnerDashboard() {
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState("");
 
-  // Edit profilu
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
 
-  // Fotky
   const [fotkyUploading, setFotkyUploading] = useState(false);
   const [fotkyMsg, setFotkyMsg] = useState("");
+
+  const [selectedPlan, setSelectedPlan] = useState("30");
+  const [boostMsg, setBoostMsg] = useState("");
+  const [boostSending, setBoostSending] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -202,10 +211,44 @@ export default function PartnerDashboard() {
     setTimeout(() => setFotkyMsg(""), 3000);
   };
 
+  const handleBoostRequest = async () => {
+    const plan = BOOST_PLANS.find(p => p.id === selectedPlan);
+    setBoostSending(true); setBoostMsg("");
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify({
+          sellerEmail: "horejsi.jakub7799@gmail.com",
+          sellerName: "Admin",
+          order: {
+            _isNewRegistration: true,
+            _registrantName: partnerProfile.name,
+            _registrantType: `ŽÁDOST O TOPOVÁNÍ — ${plan.label} (${plan.price} Kč)`,
+            _registrantTier: partnerProfile.tier,
+            buyer_email: partnerProfile.email,
+            buyer_phone: partnerProfile.phone,
+            buyer_address: `${partnerProfile.address || ""}, ${partnerProfile.city}`,
+          },
+        }),
+      });
+      setBoostMsg("✅ Žádost odeslána! Zašleme vám platební instrukce na email. Po přijetí platby bude váš profil aktivován do 24 hodin.");
+    } catch (e) {
+      setBoostMsg("❌ Chyba při odesílání žádosti. Zkuste to prosím znovu.");
+    }
+    setBoostSending(false);
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   const pending = reservations.filter(r => r.status === "pending");
   const approved = reservations.filter(r => r.status === "approved");
+
+  const now = new Date();
+  const isBoosted = partnerProfile?.boosted_until && new Date(partnerProfile.boosted_until) > now;
+  const boostedUntil = partnerProfile?.boosted_until ? new Date(partnerProfile.boosted_until) : null;
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
@@ -254,6 +297,9 @@ export default function PartnerDashboard() {
                     {pending.length}
                   </span>
                 )}
+                {item.id === "propagace" && isBoosted && (
+                  <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 6px", fontSize: "0.6rem", fontWeight: 700 }}>TOP</span>
+                )}
               </button>
             ))}
           </div>
@@ -265,6 +311,16 @@ export default function PartnerDashboard() {
           {/* PŘEHLED */}
           {activeTab === "prehled" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {isBoosted && (
+                <div style={{ background: "linear-gradient(90deg, #e07b39, #f5a623)", borderRadius: 14, padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: "1.4rem" }}>🔥</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#fff", fontSize: "0.95rem" }}>Váš profil je topovaný!</div>
+                    <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.8rem" }}>Aktivní do {boostedUntil?.toLocaleDateString("cs-CZ")}</div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 }}>
                 {[
                   { label: "Celkem rezervací", value: reservations.length, icon: "📅", color: "#1a4fa0" },
@@ -330,22 +386,19 @@ export default function PartnerDashboard() {
                   {msg}
                 </div>
               )}
-
-              {/* Filtry */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
                 {[
-                  { key: "vse", label: "Všechny", count: reservations.length },
-                  { key: "pending", label: "Čekají", count: pending.length },
-                  { key: "approved", label: "Schválené", count: approved.length },
-                  { key: "rejected", label: "Zamítnuté", count: reservations.filter(r => r.status === "rejected").length },
+                  { label: "Všechny", count: reservations.length },
+                  { label: "Čekají", count: pending.length },
+                  { label: "Schválené", count: approved.length },
+                  { label: "Zamítnuté", count: reservations.filter(r => r.status === "rejected").length },
                 ].map(f => (
-                  <div key={f.key} style={{ background: "#fff", borderRadius: 12, padding: "14px", border: "1px solid #ede8e0", textAlign: "center" }}>
+                  <div key={f.label} style={{ background: "#fff", borderRadius: 12, padding: "14px", border: "1px solid #ede8e0", textAlign: "center" }}>
                     <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1c2b22" }}>{f.count}</div>
                     <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 2 }}>{f.label}</div>
                   </div>
                 ))}
               </div>
-
               {pending.length > 0 && (
                 <div style={{ background: "#fff8e1", borderRadius: 16, padding: "24px 28px", border: "1px solid #f5c99a" }}>
                   <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>⏳ Čekají na schválení ({pending.length})</h2>
@@ -356,7 +409,6 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               )}
-
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>📅 Všechny rezervace ({reservations.length})</h2>
                 {reservations.length === 0 ? (
@@ -379,31 +431,23 @@ export default function PartnerDashboard() {
           {activeTab === "fotky" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>📷 Fotky profilu</h2>
-              <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Nahrajte fotky vašeho hotelu/místa. Max. 8 fotek. První fotka je titulní.</p>
-
+              <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Max. 8 fotek. První fotka je titulní a zobrazí se zákazníkům jako první.</p>
               {fotkyMsg && (
                 <div style={{ background: fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#880e4f" : "#1b5e20", fontWeight: 600, marginBottom: 16 }}>
                   {fotkyMsg}
                 </div>
               )}
-
-              {/* Grid fotek */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
                 {(partnerProfile?.foto_urls || []).map((url, i) => (
                   <div key={url} style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden", border: i === 0 ? "3px solid #2d6a4f" : "1.5px solid #ede8e0" }}>
                     <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    {i === 0 && (
-                      <div style={{ position: "absolute", top: 6, left: 6, background: "#2d6a4f", color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: "0.65rem", fontWeight: 700 }}>TITULNÍ</div>
-                    )}
+                    {i === 0 && <div style={{ position: "absolute", top: 6, left: 6, background: "#2d6a4f", color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: "0.65rem", fontWeight: 700 }}>TITULNÍ</div>}
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", display: "flex", gap: 4, padding: "6px" }}>
-                      {i !== 0 && (
-                        <button onClick={() => handleSetCoverPhoto(url)} style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 6, padding: "4px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>★ Titulní</button>
-                      )}
+                      {i !== 0 && <button onClick={() => handleSetCoverPhoto(url)} style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 6, padding: "4px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>★ Titulní</button>}
                       <button onClick={() => handleFotkaDelete(url)} style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 6, padding: "4px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🗑 Smazat</button>
                     </div>
                   </div>
                 ))}
-
                 {(partnerProfile?.foto_urls?.length || 0) < 8 && (
                   <label style={{ aspectRatio: "1", borderRadius: 12, border: "2px dashed #b7d9c7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: fotkyUploading ? "not-allowed" : "pointer", color: "#8a9e92", fontSize: "0.82rem", background: "#f7f4ef", gap: 8 }}>
                     <span style={{ fontSize: "2rem" }}>{fotkyUploading ? "⏳" : "📷"}</span>
@@ -412,9 +456,79 @@ export default function PartnerDashboard() {
                   </label>
                 )}
               </div>
-
               <div style={{ background: "#f0f7f4", borderRadius: 10, padding: "12px 16px", fontSize: "0.82rem", color: "#2d6a4f" }}>
                 💡 Tip: Klikněte na "★ Titulní" pro nastavení hlavní fotky která se zobrazí zákazníkům jako první.
+              </div>
+            </div>
+          )}
+
+          {/* PROPAGACE */}
+          {activeTab === "propagace" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+              {isBoosted ? (
+                <div style={{ background: "linear-gradient(135deg, #e07b39, #f5a623)", borderRadius: 16, padding: "28px 32px", textAlign: "center" }}>
+                  <div style={{ fontSize: "3rem", marginBottom: 12 }}>🔥</div>
+                  <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.6rem", color: "#fff", marginBottom: 8 }}>Váš profil je topovaný!</h2>
+                  <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.95rem", marginBottom: 4 }}>Zobrazujete se nahoře v seznamu hotelů.</p>
+                  <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.85rem" }}>Topování aktivní do: <strong>{boostedUntil?.toLocaleDateString("cs-CZ")}</strong></p>
+                </div>
+              ) : (
+                <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0", textAlign: "center" }}>
+                  <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>📉</div>
+                  <h3 style={{ fontFamily: "'DM Serif Display', serif", color: "#1c2b22", marginBottom: 8 }}>Váš profil není topovaný</h3>
+                  <p style={{ color: "#8a9e92", fontSize: "0.88rem" }}>Topováním se zobrazíte nahoře v seznamu a získáte více zákazníků.</p>
+                </div>
+              )}
+
+              <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 6 }}>🔥 Topovat profil</h2>
+                <p style={{ color: "#8a9e92", fontSize: "0.85rem", marginBottom: 24 }}>Váš hotel se zobrazí nahoře v seznamu s orange badge "TOP hotel". Více zobrazení = více rezervací.</p>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
+                  {BOOST_PLANS.map(plan => (
+                    <div key={plan.id} onClick={() => setSelectedPlan(plan.id)} style={{ border: `2px solid ${selectedPlan === plan.id ? "#e07b39" : "#ede8e0"}`, borderRadius: 14, padding: "20px", cursor: "pointer", background: selectedPlan === plan.id ? "#fdf0e6" : "#fff", position: "relative", transition: "all 0.15s" }}>
+                      {plan.popular && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "2px 12px", fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap" }}>Nejoblíbenější</div>}
+                      <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "1.1rem", marginBottom: 4 }}>{plan.label}</div>
+                      <div style={{ color: "#e07b39", fontWeight: 700, fontSize: "1.4rem", fontFamily: "'DM Serif Display', serif", marginBottom: 6 }}>{plan.price} Kč</div>
+                      <div style={{ fontSize: "0.78rem", color: "#8a9e92" }}>{plan.desc}</div>
+                      {selectedPlan === plan.id && <div style={{ marginTop: 10, color: "#e07b39", fontSize: "0.78rem", fontWeight: 700 }}>✓ Vybráno</div>}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: "#fdf0e6", borderRadius: 12, padding: "16px 20px", marginBottom: 20, border: "1px solid #f5c99a" }}>
+                  <div style={{ fontSize: "0.85rem", color: "#4a5e52", lineHeight: 1.6 }}>
+                    <strong>Jak to funguje:</strong> Po odeslání žádosti vám zašleme platební instrukce na email <strong>{partnerProfile?.email}</strong>. Po přijetí platby aktivujeme topování do 24 hodin.
+                  </div>
+                </div>
+
+                {boostMsg && (
+                  <div style={{ background: boostMsg.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${boostMsg.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: boostMsg.includes("❌") ? "#880e4f" : "#1b5e20", fontWeight: 600, marginBottom: 16 }}>
+                    {boostMsg}
+                  </div>
+                )}
+
+                <button onClick={handleBoostRequest} disabled={boostSending || !!boostMsg} style={{ width: "100%", background: boostSending || boostMsg ? "#b5cec0" : "#e07b39", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 700, cursor: boostSending || boostMsg ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                  {boostSending ? "Odesílám..." : boostMsg ? "✓ Žádost odeslána" : `🔥 Topovat na ${BOOST_PLANS.find(p => p.id === selectedPlan)?.days} dní za ${BOOST_PLANS.find(p => p.id === selectedPlan)?.price} Kč`}
+                </button>
+              </div>
+
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.1rem", color: "#1c2b22", marginBottom: 16 }}>Co topování zahrnuje?</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {[
+                    { icon: "🔝", text: "Zobrazení na prvním místě v seznamu hotelů" },
+                    { icon: "🔥", text: 'Oranžový banner "TOP hotel" na vaší kartě' },
+                    { icon: "👁", text: "Výrazně více zobrazení od potenciálních zákazníků" },
+                    { icon: "📈", text: "Průměrně 3× více rezervací během topování" },
+                  ].map(({ icon, text }) => (
+                    <div key={text} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: "0.88rem", color: "#4a5e52" }}>
+                      <span style={{ fontSize: "1.2rem" }}>{icon}</span>
+                      {text}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -424,33 +538,26 @@ export default function PartnerDashboard() {
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>✏️ Upravit profil</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
                 <div><label style={labelStyle}>Název / Jméno *</label><input style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Psí hotel U Palečka" /></div>
-
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
                   <div><label style={labelStyle}>Ulice a číslo</label><input style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} placeholder="Václavské náměstí 1" /></div>
                   <div><label style={labelStyle}>Město</label><input style={inputStyle} value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" /></div>
                 </div>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div><label style={labelStyle}>Telefon</label><input style={inputStyle} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} placeholder="+420 777 123 456" /></div>
                   <div><label style={labelStyle}>Web</label><input style={inputStyle} value={editForm.website} onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))} placeholder="www.vas-hotel.cz" /></div>
                 </div>
-
                 <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7" }}>
                   <label style={{ ...labelStyle, color: "#2d6a4f" }}>🔔 Notifikační email</label>
                   <input type="email" style={inputStyle} value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="hotel@email.cz" />
                   <div style={{ fontSize: "0.72rem", color: "#4a5e52", marginTop: 6 }}>Na tento email vám budou chodit upozornění o nových rezervacích s odkazem na schválení.</div>
                 </div>
-
                 <div><label style={labelStyle}>Popis</label><textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} placeholder="Popište vaše služby..." /></div>
-
                 {editMsg && (
                   <div style={{ background: editMsg.includes("❌") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${editMsg.includes("❌") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: editMsg.includes("❌") ? "#880e4f" : "#1b5e20", fontWeight: 600 }}>
                     {editMsg}
                   </div>
                 )}
-
                 <div style={{ display: "flex", gap: 12 }}>
                   <button onClick={handleSaveProfile} disabled={editSaving} style={{ flex: 1, background: editSaving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: editSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                     {editSaving ? "Ukládám..." : "✓ Uložit změny"}
@@ -459,7 +566,6 @@ export default function PartnerDashboard() {
                     👁 Zobrazit profil
                   </button>
                 </div>
-
                 <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "16px 18px", border: "1px solid #ede8e0" }}>
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>Informace o účtu</div>
                   <div style={{ fontSize: "0.85rem", color: "#4a5e52" }}>
