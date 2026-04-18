@@ -25,9 +25,10 @@ const MENU = [
 ];
 
 const BOOST_PLANS = [
-  { id: "7", label: "7 dní", price: 149, days: 7, desc: "Ideální pro otestování" },
-  { id: "30", label: "30 dní", price: 399, days: 30, desc: "Nejoblíbenější", popular: true },
-  { id: "90", label: "90 dní", price: 899, days: 90, desc: "Nejlepší hodnota" },
+  { id: "1", label: "1 den", price: 29, days: 1, desc: "Vyzkoušejte bez rizika" },
+  { id: "7", label: "7 dní", price: 149, days: 7, desc: "Ideální pro víkend nebo svátek" },
+  { id: "14", label: "14 dní", price: 249, days: 14, desc: "Nejlepší poměr ceny a výkonu", popular: true },
+  { id: "30", label: "30 dní", price: 399, days: 30, desc: "Nejnižší cena za den (13 Kč)" },
 ];
 
 export default function PartnerDashboard() {
@@ -485,7 +486,7 @@ export default function PartnerDashboard() {
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 6 }}>🔥 Topovat profil</h2>
                 <p style={{ color: "#8a9e92", fontSize: "0.85rem", marginBottom: 24 }}>Váš hotel se zobrazí nahoře v seznamu s orange badge "TOP hotel". Více zobrazení = více rezervací.</p>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, marginBottom: 24 }}>
                   {BOOST_PLANS.map(plan => (
                     <div key={plan.id} onClick={() => setSelectedPlan(plan.id)} style={{ border: `2px solid ${selectedPlan === plan.id ? "#e07b39" : "#ede8e0"}`, borderRadius: 14, padding: "20px", cursor: "pointer", background: selectedPlan === plan.id ? "#fdf0e6" : "#fff", position: "relative", transition: "all 0.15s" }}>
                       {plan.popular && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "2px 12px", fontSize: "0.68rem", fontWeight: 700, whiteSpace: "nowrap" }}>Nejoblíbenější</div>}
