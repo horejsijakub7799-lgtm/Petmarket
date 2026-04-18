@@ -19,6 +19,7 @@ const TYPE_LABEL = {
 const MENU = [
   { id: "prehled", label: "Přehled", icon: "📊" },
   { id: "rezervace", label: "Rezervace", icon: "📅" },
+  { id: "fotky", label: "Fotky", icon: "📷" },
   { id: "profil", label: "Můj profil", icon: "✏️" },
 ];
 
@@ -33,9 +34,14 @@ export default function PartnerDashboard() {
   const [actionLoading, setActionLoading] = useState(null);
   const [msg, setMsg] = useState("");
 
+  // Edit profilu
   const [editForm, setEditForm] = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
+
+  // Fotky
+  const [fotkyUploading, setFotkyUploading] = useState(false);
+  const [fotkyMsg, setFotkyMsg] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -143,6 +149,59 @@ export default function PartnerDashboard() {
     setEditSaving(false);
   };
 
+  const compressImage = (file) => new Promise((resolve) => {
+    const canvas = document.createElement("canvas"); const img = new Image();
+    img.onload = () => {
+      const maxSize = 1200; let w = img.width, h = img.height;
+      if (w > h && w > maxSize) { h = (h * maxSize) / w; w = maxSize; } else if (h > maxSize) { w = (w * maxSize) / h; h = maxSize; }
+      canvas.width = w; canvas.height = h; canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.8);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  const handleFotkyUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    const currentCount = partnerProfile?.foto_urls?.length || 0;
+    if (currentCount + files.length > 8) { setFotkyMsg("⚠️ Max. 8 fotek celkem."); return; }
+    setFotkyUploading(true); setFotkyMsg("");
+    try {
+      const newUrls = [];
+      for (const file of files) {
+        const compressed = await compressImage(file);
+        const fileName = `partners/${partnerProfile.id}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, compressed);
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+        newUrls.push(urlData.publicUrl);
+      }
+      const updatedUrls = [...(partnerProfile.foto_urls || []), ...newUrls];
+      const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
+      if (error) throw error;
+      setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls }));
+      setFotkyMsg("✅ Fotky nahrány!");
+      setTimeout(() => setFotkyMsg(""), 3000);
+    } catch (err) { setFotkyMsg("❌ Chyba: " + err.message); }
+    setFotkyUploading(false);
+  };
+
+  const handleFotkaDelete = async (url) => {
+    const updatedUrls = (partnerProfile.foto_urls || []).filter(u => u !== url);
+    const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls }).eq("id", partnerProfile.id);
+    if (error) { setFotkyMsg("❌ Chyba: " + error.message); return; }
+    setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls }));
+  };
+
+  const handleSetCoverPhoto = async (url) => {
+    const otherUrls = (partnerProfile.foto_urls || []).filter(u => u !== url);
+    const updatedUrls = [url, ...otherUrls];
+    const { error } = await supabase.from("partner_profiles").update({ foto_urls: updatedUrls, cover_photo: url }).eq("id", partnerProfile.id);
+    if (error) { setFotkyMsg("❌ Chyba: " + error.message); return; }
+    setPartnerProfile(p => ({ ...p, foto_urls: updatedUrls, cover_photo: url }));
+    setFotkyMsg("✅ Titulní fotka nastavena!");
+    setTimeout(() => setFotkyMsg(""), 3000);
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   const pending = reservations.filter(r => r.status === "pending");
@@ -183,6 +242,7 @@ export default function PartnerDashboard() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px", display: "flex", gap: 24 }}>
 
+        {/* Sidebar */}
         <div style={{ width: 220, flexShrink: 0 }}>
           <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1px solid #ede8e0" }}>
             {MENU.map((item, i) => (
@@ -199,8 +259,10 @@ export default function PartnerDashboard() {
           </div>
         </div>
 
+        {/* Obsah */}
         <div style={{ flex: 1 }}>
 
+          {/* PŘEHLED */}
           {activeTab === "prehled" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 16 }}>
@@ -224,15 +286,15 @@ export default function PartnerDashboard() {
                     <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.1rem", color: "#1c2b22", margin: 0 }}>⏳ Čekají na schválení ({pending.length})</h2>
                     <button onClick={() => setActiveTab("rezervace")} style={{ background: "#e07b39", color: "#fff", border: "none", borderRadius: 8, padding: "6px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zobrazit vše →</button>
                   </div>
-                  {pending.slice(0, 2).map(r => (
+                  {pending.slice(0, 3).map(r => (
                     <div key={r.id} style={{ background: "#fff", borderRadius: 10, padding: "12px 16px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#1c2b22" }}>{r.customer_name}</div>
-                        <div style={{ fontSize: "0.78rem", color: "#8a9e92" }}>{r.date_from} → {r.date_to} · {r.total_price} Kč</div>
+                        <div style={{ fontSize: "0.78rem", color: "#8a9e92" }}>{r.date_from} → {r.date_to} · {r.num_dogs} psů · {r.total_price} Kč</div>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button onClick={() => handleAction(r, "approve")} disabled={actionLoading === r.id} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✓ Schválit</button>
-                        <button onClick={() => handleAction(r, "reject")} disabled={actionLoading === r.id} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 8, padding: "6px 12px", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✕</button>
+                        <button onClick={() => handleAction(r, "approve")} disabled={actionLoading === r.id} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✓ Schválit</button>
+                        <button onClick={() => handleAction(r, "reject")} disabled={actionLoading === r.id} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 8, padding: "7px 12px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✕ Zamítnout</button>
                       </div>
                     </div>
                   ))}
@@ -260,6 +322,7 @@ export default function PartnerDashboard() {
             </div>
           )}
 
+          {/* REZERVACE */}
           {activeTab === "rezervace" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {msg && (
@@ -267,6 +330,22 @@ export default function PartnerDashboard() {
                   {msg}
                 </div>
               )}
+
+              {/* Filtry */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                {[
+                  { key: "vse", label: "Všechny", count: reservations.length },
+                  { key: "pending", label: "Čekají", count: pending.length },
+                  { key: "approved", label: "Schválené", count: approved.length },
+                  { key: "rejected", label: "Zamítnuté", count: reservations.filter(r => r.status === "rejected").length },
+                ].map(f => (
+                  <div key={f.key} style={{ background: "#fff", borderRadius: 12, padding: "14px", border: "1px solid #ede8e0", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1c2b22" }}>{f.count}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 2 }}>{f.label}</div>
+                  </div>
+                ))}
+              </div>
+
               {pending.length > 0 && (
                 <div style={{ background: "#fff8e1", borderRadius: 16, padding: "24px 28px", border: "1px solid #f5c99a" }}>
                   <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>⏳ Čekají na schválení ({pending.length})</h2>
@@ -277,6 +356,7 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               )}
+
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>📅 Všechny rezervace ({reservations.length})</h2>
                 {reservations.length === 0 ? (
@@ -295,24 +375,74 @@ export default function PartnerDashboard() {
             </div>
           )}
 
+          {/* FOTKY */}
+          {activeTab === "fotky" && (
+            <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
+              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>📷 Fotky profilu</h2>
+              <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 24 }}>Nahrajte fotky vašeho hotelu/místa. Max. 8 fotek. První fotka je titulní.</p>
+
+              {fotkyMsg && (
+                <div style={{ background: fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: fotkyMsg.includes("❌") || fotkyMsg.includes("⚠️") ? "#880e4f" : "#1b5e20", fontWeight: 600, marginBottom: 16 }}>
+                  {fotkyMsg}
+                </div>
+              )}
+
+              {/* Grid fotek */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+                {(partnerProfile?.foto_urls || []).map((url, i) => (
+                  <div key={url} style={{ position: "relative", aspectRatio: "1", borderRadius: 12, overflow: "hidden", border: i === 0 ? "3px solid #2d6a4f" : "1.5px solid #ede8e0" }}>
+                    <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {i === 0 && (
+                      <div style={{ position: "absolute", top: 6, left: 6, background: "#2d6a4f", color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: "0.65rem", fontWeight: 700 }}>TITULNÍ</div>
+                    )}
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.5)", display: "flex", gap: 4, padding: "6px" }}>
+                      {i !== 0 && (
+                        <button onClick={() => handleSetCoverPhoto(url)} style={{ flex: 1, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 6, padding: "4px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>★ Titulní</button>
+                      )}
+                      <button onClick={() => handleFotkaDelete(url)} style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 6, padding: "4px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>🗑 Smazat</button>
+                    </div>
+                  </div>
+                ))}
+
+                {(partnerProfile?.foto_urls?.length || 0) < 8 && (
+                  <label style={{ aspectRatio: "1", borderRadius: 12, border: "2px dashed #b7d9c7", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: fotkyUploading ? "not-allowed" : "pointer", color: "#8a9e92", fontSize: "0.82rem", background: "#f7f4ef", gap: 8 }}>
+                    <span style={{ fontSize: "2rem" }}>{fotkyUploading ? "⏳" : "📷"}</span>
+                    {fotkyUploading ? "Nahrávám..." : "Přidat fotku"}
+                    <input type="file" accept="image/*" multiple onChange={handleFotkyUpload} style={{ display: "none" }} disabled={fotkyUploading} />
+                  </label>
+                )}
+              </div>
+
+              <div style={{ background: "#f0f7f4", borderRadius: 10, padding: "12px 16px", fontSize: "0.82rem", color: "#2d6a4f" }}>
+                💡 Tip: Klikněte na "★ Titulní" pro nastavení hlavní fotky která se zobrazí zákazníkům jako první.
+              </div>
+            </div>
+          )}
+
+          {/* PROFIL */}
           {activeTab === "profil" && editForm && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>✏️ Upravit profil</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
                 <div><label style={labelStyle}>Název / Jméno *</label><input style={inputStyle} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Psí hotel U Palečka" /></div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 14 }}>
                   <div><label style={labelStyle}>Ulice a číslo</label><input style={inputStyle} value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} placeholder="Václavské náměstí 1" /></div>
                   <div><label style={labelStyle}>Město</label><input style={inputStyle} value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder="Praha" /></div>
                 </div>
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div><label style={labelStyle}>Telefon</label><input style={inputStyle} value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} placeholder="+420 777 123 456" /></div>
                   <div><label style={labelStyle}>Web</label><input style={inputStyle} value={editForm.website} onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))} placeholder="www.vas-hotel.cz" /></div>
                 </div>
-                <div>
-                  <label style={labelStyle}>Notifikační email (kam chodit upozornění o rezervacích)</label>
+
+                <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7" }}>
+                  <label style={{ ...labelStyle, color: "#2d6a4f" }}>🔔 Notifikační email</label>
                   <input type="email" style={inputStyle} value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="hotel@email.cz" />
-                  <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 5 }}>Na tento email budou chodit upozornění o nových rezervacích.</div>
+                  <div style={{ fontSize: "0.72rem", color: "#4a5e52", marginTop: 6 }}>Na tento email vám budou chodit upozornění o nových rezervacích s odkazem na schválení.</div>
                 </div>
+
                 <div><label style={labelStyle}>Popis</label><textarea style={{ ...inputStyle, minHeight: 120, resize: "vertical" }} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} placeholder="Popište vaše služby..." /></div>
 
                 {editMsg && (
