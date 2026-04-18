@@ -317,14 +317,17 @@ export default function PetMarket() {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-const { user, profile, signOut } = useAuth();
-const [isApprovedSeller, setIsApprovedSeller] = useState(false);
+  const { user, profile, signOut } = useAuth();
+  const [isApprovedSeller, setIsApprovedSeller] = useState(false);
+  const [isPartner, setIsPartner] = useState(false);
 
-useEffect(() => {
-  if (!user) { setIsApprovedSeller(false); return; }
-  supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single()
-    .then(({ data }) => setIsApprovedSeller(!!data));
-}, [user]);  
+  useEffect(() => {
+    if (!user) { setIsApprovedSeller(false); setIsPartner(false); return; }
+    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("type", "seller").eq("approved", true).single()
+      .then(({ data }) => setIsApprovedSeller(!!data));
+    supabase.from("partner_profiles").select("id").eq("user_id", user.id).eq("approved", true).in("type", ["hotel", "vencitel", "hlidani", "veterinar"]).single()
+      .then(({ data }) => setIsPartner(!!data));
+  }, [user]);
 
   useEffect(() => {
     const fetchInzeraty = async () => {
@@ -348,8 +351,8 @@ useEffect(() => {
     else if (service.id === "hlidani") window.location.href = "/hlidani";
     else if (service.id === "venceni") window.location.href = "/venceni";
     else if (service.id === "partneri") window.location.href = "/shop";
-else if (service.id === "pojisteni") window.location.href = "/pojisteni";
-else setComingSoon(service);
+    else if (service.id === "pojisteni") window.location.href = "/pojisteni";
+    else setComingSoon(service);
   };
 
   const toast_ = msg => { setToast(msg); setTimeout(() => setToast(null), 3000); };
@@ -396,17 +399,20 @@ else setComingSoon(service);
             {savedCount > 0 && <div style={{ background:"var(--green-light)", color:"var(--green)", borderRadius:20, padding:"6px 14px", fontSize:"0.8rem", fontWeight:700, border:"1px solid #b7d9c7" }}>♥ {savedCount}</div>}
             {user ? (
               <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => window.location.href = "/profil"}>👤 {userName}</button>
+                <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => window.location.href = isPartner ? "/partner/dashboard" : "/profil"}>
+                  {isPartner ? "🏨" : "👤"} {userName}
+                </button>
                 {isApprovedSeller && (
-  <button className="btn-secondary" style={{ padding:"8px 16px", borderColor:"var(--green)", color:"var(--green)" }} onClick={() => window.location.href = "/seller/dashboard"}>🏪 Můj obchod</button>
-)}
+                  <button className="btn-secondary" style={{ padding:"8px 16px", borderColor:"var(--green)", color:"var(--green)" }} onClick={() => window.location.href = "/seller/dashboard"}>🏪 Můj obchod</button>
+                )}
                 <button className="btn-secondary" style={{ padding:"8px 14px", fontSize:"0.8rem", borderColor:"var(--sand-dark)", color:"var(--text-mid)" }} onClick={signOut}>Odhlásit</button>
               </div>
             ) : (
               <button className="btn-secondary" style={{ padding:"8px 16px" }} onClick={() => setShowAuth(true)}>Přihlásit se</button>
             )}
-<button className="btn-secondary" onClick={() => window.location.href = "/partneri"} style={{ padding:"10px 20px" }}>🤝 Staň se partnerem</button>
-<button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>+ Prodat</button>          </div>
+            <button className="btn-secondary" onClick={() => window.location.href = "/partneri"} style={{ padding:"10px 20px" }}>🤝 Staň se partnerem</button>
+            <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding:"10px 20px" }}>+ Prodat</button>
+          </div>
         </div>
       </nav>
 
