@@ -6,7 +6,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("user");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -78,7 +78,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, role: role === "vet" ? "vet" : "buyer" } },
+      options: { data: { full_name: name, role: "buyer" } },
     });
     setLoading(false);
     if (error) { setError(error.message); return; }
@@ -165,23 +165,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
             </div>
           )}
 
-          {mode === "register" && (
-            <div>
-              <label style={labelStyle}>Typ účtu</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <button onClick={() => setRole("user")} style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", border: role === "user" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0", background: role === "user" ? "#e8f5ef" : "#fff", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
-                  <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🐾</div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "user" ? "#2d6a4f" : "#1c2b22" }}>Uživatel</div>
-                  <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Nakupuji & prodávám</div>
-                </button>
-                <button onClick={() => setRole("vet")} style={{ padding: "12px 10px", borderRadius: 12, cursor: "pointer", border: role === "vet" ? "2px solid #2d6a4f" : "1.5px solid #ede8e0", background: role === "vet" ? "#e8f5ef" : "#fff", textAlign: "center", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
-                  <div style={{ fontSize: "1.4rem", marginBottom: 4 }}>🩺</div>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: role === "vet" ? "#2d6a4f" : "#1c2b22" }}>Veterinář / Salon</div>
-                  <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 2 }}>Profesionální účet</div>
-                </button>
-              </div>
-            </div>
-          )}
+
 
           {mode === "register" && (
             <div>
@@ -228,9 +212,15 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
               </>
             )}
             {mode === "register" && (
-              <span>Už máš účet?{" "}
-                <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>Přihlásit se</button>
-              </span>
+              <>
+                <span>Už máš účet?{" "}
+                  <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>Přihlásit se</button>
+                </span>
+                <div style={{ background: "#f0f7f4", borderRadius: 10, padding: "10px 14px", border: "1px solid #b7d9c7", textAlign: "center" }}>
+                  <span style={{ fontSize: "0.78rem", color: "#4a5e52" }}>Jsi veterinář, hotel nebo venčitel?{" "}</span>
+                  <a href="/partneri" style={{ fontSize: "0.78rem", color: "#2d6a4f", fontWeight: 700, textDecoration: "none" }}>Zaregistruj se jako partner →</a>
+                </div>
+              </>
             )}
             {mode === "reset" && (
               <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>← Zpět na přihlášení</button>
