@@ -189,14 +189,31 @@ export default function PartnerDashboard() {
     setActionLoading(null);
   };
 
+  const geocodeAddress = async (address, city) => {
+    try {
+      const query = encodeURIComponent(`${address}, ${city}, Czech Republic`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch (e) { console.error("Geocoding failed:", e); }
+    return null;
+  };
+
   const handleSaveProfile = async () => {
     setEditSaving(true); setEditMsg("");
+    // Geocoding adresy
+    const coords = await geocodeAddress(editForm.address, editForm.city);
+
     const updateData = isVet ? {
       clinic_name: editForm.name, phone: editForm.phone, address: editForm.address,
       city: editForm.city, web: editForm.website, description: editForm.description, email: editForm.email,
+      ...(coords && { lat: coords.lat, lng: coords.lng }),
     } : {
       name: editForm.name, phone: editForm.phone, address: editForm.address,
       city: editForm.city, website: editForm.website, description: editForm.description, email: editForm.email,
+      ...(coords && { lat: coords.lat, lng: coords.lng }),
     };
     const { error } = await supabase.from(getTable()).update(updateData).eq("id", partnerProfile.id);
     if (error) { setEditMsg("❌ Chyba: " + error.message); setEditSaving(false); return; }
