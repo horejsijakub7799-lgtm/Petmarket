@@ -87,32 +87,71 @@ function CondBadge({ cond }) {
 
 function Card({ item, onOpen, onSave, delay }) {
   const discountedPrice = item.discount_percent ? Math.round(item.price * (1 - item.discount_percent / 100)) : null;
+  const [hovered, setHovered] = useState(false);
+  const catIcons = { vybaveni:"🏠", krmivo:"🦴", obleceni:"🧥", hracky:"🧸", preprava:"📦", pece:"🧴" };
+  const catIcon = catIcons[item.cat || item.category] || "🐾";
+
   return (
-    <div className="card" style={{ animationDelay:`${delay}ms` }} onClick={() => onOpen(item)}>
-      <div style={{ height:150, background:"linear-gradient(145deg, var(--green-pale), var(--sand))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"3.8rem", position:"relative", overflow:"hidden" }}>
+    <div
+      className="card"
+      style={{ animationDelay:`${delay}ms`, transform: hovered ? "translateY(-6px)" : "translateY(0)", boxShadow: hovered ? "0 16px 48px rgba(44,80,58,0.18)" : "var(--shadow-sm)", transition:"all 0.22s ease" }}
+      onClick={() => onOpen(item)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Foto */}
+      <div style={{ height:200, background:"linear-gradient(145deg, var(--green-pale), var(--sand))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"4rem", position:"relative", overflow:"hidden" }}>
         {item.foto_urls && item.foto_urls.length > 0
-          ? <img src={item.foto_urls[0]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
-          : "🐾"}
-        {item.discount_percent && <div style={{ position:"absolute", top:10, left:10, background:"#e07b39", color:"#fff", borderRadius:20, padding:"3px 10px", fontSize:"0.75rem", fontWeight:700, zIndex:1 }}>-{item.discount_percent}%</div>}
-        <button onClick={e => { e.stopPropagation(); onSave(item.id); }} style={{ position:"absolute", top:10, right:10, background: item.saved ? "var(--green)" : "rgba(255,255,255,0.9)", border:"none", borderRadius:"50%", width:34, height:34, cursor:"pointer", fontSize:"0.95rem", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 1px 6px rgba(0,0,0,0.12)", transition:"all 0.2s", zIndex:1 }}>
+          ? <img src={item.foto_urls[0]} alt={item.title} style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0, transition:"transform 0.3s ease", transform: hovered ? "scale(1.04)" : "scale(1)" }} />
+          : <span style={{ fontSize:"4rem", opacity:0.4 }}>🐾</span>}
+
+        {/* Overlay gradient */}
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top, rgba(0,0,0,0.15) 0%, transparent 50%)", pointerEvents:"none" }} />
+
+        {/* Discount badge */}
+        {item.discount_percent && <div style={{ position:"absolute", top:12, left:12, background:"#e07b39", color:"#fff", borderRadius:20, padding:"4px 11px", fontSize:"0.75rem", fontWeight:700, zIndex:1, boxShadow:"0 2px 8px rgba(224,123,57,0.4)" }}>-{item.discount_percent}%</div>}
+
+        {/* Foto count */}
+        {item.foto_urls && item.foto_urls.length > 1 && (
+          <div style={{ position:"absolute", bottom:10, left:12, background:"rgba(0,0,0,0.55)", color:"#fff", borderRadius:20, padding:"3px 9px", fontSize:"0.7rem", fontWeight:600, zIndex:1 }}>📷 {item.foto_urls.length}</div>
+        )}
+
+        {/* Save button */}
+        <button onClick={e => { e.stopPropagation(); onSave(item.id); }} style={{ position:"absolute", top:12, right:12, background: item.saved ? "var(--green)" : "rgba(255,255,255,0.95)", border:"none", borderRadius:"50%", width:36, height:36, cursor:"pointer", fontSize:"1rem", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)", transition:"all 0.2s", zIndex:1, color: item.saved ? "#fff" : "var(--text-mid)" }}>
           {item.saved ? "♥" : "♡"}
         </button>
       </div>
-      <div style={{ padding:"14px 16px 16px" }}>
-        <div style={{ fontSize:"0.8rem", color:"var(--text-light)", marginBottom:5, fontWeight:500, display:"flex", justifyContent:"space-between" }}>
-          <span>📍 {item.city} · {item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}</span>
-          {item.views > 0 && <span>👁 {item.views}</span>}
+
+      {/* Content */}
+      <div style={{ padding:"16px 18px 18px" }}>
+        {/* Category + views */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <span style={{ fontSize:"0.72rem", color:"var(--text-light)", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.05em" }}>
+            {catIcon} {(item.cat || item.category || "").replace("vybaveni","Vybavení").replace("krmivo","Krmivo").replace("obleceni","Oblečení").replace("hracky","Hračky").replace("preprava","Přeprava").replace("pece","Péče")}
+          </span>
+          {item.views > 0 && <span style={{ fontSize:"0.72rem", color:"var(--text-light)" }}>👁 {item.views}</span>}
         </div>
-        <div style={{ fontWeight:600, fontSize:"0.95rem", color:"var(--text)", lineHeight:1.35, marginBottom:10, minHeight:40 }}>{item.title}</div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+
+        {/* Title */}
+        <div style={{ fontWeight:700, fontSize:"1rem", color:"var(--text)", lineHeight:1.35, marginBottom:10, minHeight:44, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden" }}>{item.title}</div>
+
+        {/* Location + date */}
+        <div style={{ fontSize:"0.78rem", color:"var(--text-light)", marginBottom:12, display:"flex", alignItems:"center", gap:4 }}>
+          <span>📍 {item.city}</span>
+          <span style={{ color:"var(--sand-dark)" }}>·</span>
+          <span>{item.created_at ? new Date(item.created_at).toLocaleDateString("cs-CZ") : ""}</span>
+        </div>
+
+        {/* Price + condition */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", paddingTop:10, borderTop:"1px solid var(--sand-dark)" }}>
           <div>
             {discountedPrice ? (
-              <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>{discountedPrice} Kč</span>
-                <span style={{ fontSize:"0.8rem", color:"var(--text-light)", textDecoration:"line-through" }}>{item.price} Kč</span>
+              <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                <span style={{ fontSize:"1.3rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>{discountedPrice} Kč</span>
+                <span style={{ fontSize:"0.78rem", color:"var(--text-light)", textDecoration:"line-through" }}>{item.price} Kč</span>
               </div>
             ) : (
-              <span style={{ fontSize:"1.2rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>{item.price} Kč</span>
+              <span style={{ fontSize:"1.3rem", fontWeight:700, color:"var(--green)", fontFamily:"'DM Serif Display', serif" }}>{item.price} Kč</span>
             )}
           </div>
           <CondBadge cond={item.cond || item.condition} />
@@ -474,7 +513,7 @@ export default function PetMarket() {
             <button className="btn-primary" style={{ marginTop:20 }} onClick={() => setShowAdd(true)}>+ Přidat inzerát</button>
           </div>
         ) : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(230px, 1fr))", gap:20 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:24 }}>
             {filtered.map((item, i) => <Card key={item.id} item={item} onOpen={setSelected} onSave={handleSave} delay={i * 40} />)}
           </div>
         )}
