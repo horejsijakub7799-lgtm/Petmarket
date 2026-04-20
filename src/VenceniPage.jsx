@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "./supabase";
 
@@ -8,8 +8,53 @@ export default function VenceniPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterCity, setFilterCity] = useState("");
+  const [view, setView] = useState("list");
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
 
   useEffect(() => { fetchVencitele(); }, []);
+
+  useEffect(() => {
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link"); link.id = "leaflet-css"; link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(link);
+    }
+    if (!document.getElementById("leaflet-js")) {
+      const script = document.createElement("script"); script.id = "leaflet-js";
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; document.head.appendChild(script);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (view === "map") {
+      if (window.L && !mapInstanceRef.current) initMap();
+      else if (!window.L) { const i = setInterval(() => { if (window.L) { clearInterval(i); initMap(); } }, 100); }
+    }
+  }, [view]);
+
+  useEffect(() => { if (view === "map" && mapInstanceRef.current) updateMarkers(); }, [vencitele, search, filterCity, view]);
+
+  const initMap = () => {
+    if (!window.L || !mapRef.current) return;
+    const map = window.L.map(mapRef.current).setView([49.8, 15.5], 7);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors" }).addTo(map);
+    mapInstanceRef.current = map; updateMarkers();
+  };
+
+  const updateMarkers = () => {
+    if (!mapInstanceRef.current) return;
+    markersRef.current.forEach(m => m.remove()); markersRef.current = [];
+    sorted.forEach(v => {
+      if (!v.lat || !v.lng) return;
+      const isBoosted = v.boosted_until && new Date(v.boosted_until) > new Date();
+      const icon = window.L.divIcon({ className: "", html: `<div style="background:${isBoosted ? "#e07b39" : "#2d6a4f"};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;">🦮</div>`, iconSize: [36,36], iconAnchor: [18,18] });
+      const marker = window.L.marker([v.lat, v.lng], { icon }).addTo(mapInstanceRef.current);
+      const price = v.metadata?.price_per_walk ? `${v.metadata.price_per_walk} Kč/procházka` : "";
+      marker.bindPopup(`<div style="font-family:'DM Sans',sans-serif;min-width:200px;"><div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${v.name}</div><div style="font-size:0.78rem;color:#8a9e92;margin-bottom:4px;">📍 ${v.city}</div>${price ? `<div style="font-size:0.82rem;color:#2d6a4f;font-weight:700;margin-bottom:8px;">💰 ${price}</div>` : ""}<a href="/partner/${v.id}" style="display:block;background:#2d6a4f;color:#fff;border-radius:8px;padding:7px;text-align:center;font-size:0.82rem;font-weight:600;text-decoration:none;">Zobrazit profil →</a></div>`);
+      markersRef.current.push(marker);
+    });
+  };
 
   const fetchVencitele = async () => {
     const { data } = await supabase
@@ -104,18 +149,27 @@ export default function VenceniPage() {
       <div style={{ background: "linear-gradient(135deg, #2d6a4f 0%, #3a7d60 100%)", padding: "40px 24px", textAlign: "center" }}>
         <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#fff", marginBottom: 8 }}>🦮 Venčení psů</h1>
         <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9rem", marginBottom: 24 }}>Najdi spolehlivého venčitele ve svém okolí</p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", maxWidth: 600, margin: "0 auto" }}>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", maxWidth: 600, margin: "0 auto 16px" }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat venčitele nebo město..." style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
           <select value={filterCity} onChange={e => setFilterCity(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
             <option value="">Všechna města</option>
             {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
+        <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.15)", borderRadius: 30, padding: 4, gap: 4 }}>
+          {[{ id: "list", label: "☰ Seznam" }, { id: "map", label: "🗺️ Mapa" }].map(v => (
+            <button key={v.id} onClick={() => setView(v.id)} style={{ padding: "7px 20px", borderRadius: 26, border: "none", background: view === v.id ? "#fff" : "transparent", color: view === v.id ? "#2d6a4f" : "rgba(255,255,255,0.85)", fontWeight: view === v.id ? 700 : 500, fontSize: "0.85rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", transition: "all 0.2s" }}>{v.label}</button>
+          ))}
+        </div>
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: "60px", color: "#8a9e92" }}>Načítám...</div>
+        ) : view === "map" ? (
+          <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 4px 20px rgba(44,80,58,0.1)", border: "1px solid #ede8e0" }}>
+            <div ref={mapRef} style={{ height: 560, width: "100%" }} />
+          </div>
         ) : sorted.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px", color: "#8a9e92" }}>
             <div style={{ fontSize: "3rem", marginBottom: 16 }}>🦮</div>
