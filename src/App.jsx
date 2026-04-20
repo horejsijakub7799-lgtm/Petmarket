@@ -161,7 +161,82 @@ function Card({ item, onOpen, onSave, delay }) {
   );
 }
 
-function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onView }) {
+function ReportModal({ item, onClose, user }) {
+  const [reason, setReason] = useState("");
+  const [sent, setSent] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const reasons = [
+    "Podezření na podvod",
+    "Falešný inzerát / nepravdivé informace",
+    "Nevhodný obsah",
+    "Prodej zakázaného zboží",
+    "Spam nebo duplicitní inzerát",
+    "Jiný důvod",
+  ];
+
+  const handleSend = async () => {
+    if (!reason) return;
+    setSaving(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify({
+          sellerEmail: "horejsi.jakub7799@gmail.com",
+          sellerName: "Admin",
+          order: {
+            _isNewRegistration: true,
+            _registrantName: `NAHLÁŠENÝ INZERÁT: ${item.title}`,
+            _registrantType: `Důvod: ${reason}`,
+            _registrantTier: `Inzerát ID: ${item.id}`,
+            buyer_email: user?.email || "anonymní",
+            buyer_phone: "",
+            buyer_address: `Prodejce: ${item.seller_name || item.seller_id}`,
+          },
+        }),
+      });
+      setSent(true);
+    } catch (e) { console.error(e); }
+    setSaving(false);
+  };
+
+  return (
+    <div className="overlay" onClick={onClose} style={{ zIndex:300 }}>
+      <div className="modal" style={{ maxWidth:420 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding:"22px 24px 18px", borderBottom:"1px solid var(--sand-dark)", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <h2 style={{ fontSize:"1.1rem", color:"var(--text)" }}>🚨 Nahlásit inzerát</h2>
+          <button onClick={onClose} style={{ background:"var(--sand)", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:"0.9rem", color:"var(--text-mid)", fontWeight:700 }}>✕</button>
+        </div>
+        <div style={{ padding:"20px 24px 24px" }}>
+          {sent ? (
+            <div style={{ textAlign:"center", padding:"20px 0" }}>
+              <div style={{ fontSize:"2.5rem", marginBottom:12 }}>✅</div>
+              <p style={{ color:"var(--text-mid)", fontSize:"0.9rem" }}>Nahlášení odesláno. Prověříme to do 24 hodin.</p>
+              <button className="btn-primary" style={{ marginTop:16, width:"100%" }} onClick={onClose}>Zavřít</button>
+            </div>
+          ) : (
+            <>
+              <p style={{ color:"var(--text-mid)", fontSize:"0.85rem", marginBottom:16, lineHeight:1.6 }}>Proč nahlašuješ tento inzerát "<strong>{item.title}</strong>"?</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:20 }}>
+                {reasons.map(r => (
+                  <button key={r} onClick={() => setReason(r)} style={{ padding:"10px 14px", borderRadius:10, border:`1.5px solid ${reason === r ? "var(--accent)" : "var(--sand-dark)"}`, background: reason === r ? "var(--accent-light)" : "#fff", color: reason === r ? "var(--accent)" : "var(--text-mid)", fontSize:"0.85rem", fontWeight: reason === r ? 600 : 400, cursor:"pointer", textAlign:"left", fontFamily:"'DM Sans', sans-serif" }}>{r}</button>
+                ))}
+              </div>
+              <button onClick={handleSend} disabled={!reason || saving} className="btn-primary" style={{ width:"100%", opacity: !reason ? 0.5 : 1 }}>
+                {saving ? "Odesílám..." : "Odeslat nahlášení"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onView, onReport }) {
   const [fotoIdx, setFotoIdx] = useState(0);
 
   useEffect(() => {
@@ -215,6 +290,13 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onVi
               <span key={tag} style={{ background:"var(--sand)", border:"1px solid var(--sand-dark)", borderRadius:20, padding:"5px 12px", fontSize:"0.78rem", color:"var(--text-mid)", fontWeight:500 }}>{tag}</span>
             ))}
           </div>
+          {/* Varování před podvodem */}
+          <div style={{ background:"#fff8e1", border:"1px solid #f5c99a", borderRadius:10, padding:"10px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:"1rem", flexShrink:0 }}>⚠️</span>
+            <span style={{ fontSize:"0.78rem", color:"#7a5c00", lineHeight:1.5 }}>
+              <strong>Nikdy neplaťte mimo platformu.</strong> Platby přes WhatsApp, Western Union nebo předem na účet jsou typickým znakem podvodu.
+            </span>
+          </div>
           <div style={{ display:"flex", gap:10 }}>
             {!isOwner ? (
               <button className="btn-primary" style={{ flex:1 }} onClick={() => { if (!user) { onClose(); onAuthRequired(); return; } onChat(item); }}>💬 Napsat prodejci</button>
@@ -225,6 +307,11 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onVi
               {item.saved ? "♥ Uloženo" : "♡ Uložit"}
             </button>
           </div>
+          {!isOwner && (
+            <button onClick={() => onReport(item)} style={{ width:"100%", background:"none", border:"none", color:"var(--text-light)", fontSize:"0.75rem", cursor:"pointer", marginTop:4, fontFamily:"'DM Sans', sans-serif", textDecoration:"underline" }}>
+              🚨 Nahlásit inzerát
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -355,6 +442,7 @@ export default function PetMarket() {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
+  const [reportItem, setReportItem] = useState(null);
   const { user, profile, signOut } = useAuth();
   const [isApprovedSeller, setIsApprovedSeller] = useState(false);
   const [isPartner, setIsPartner] = useState(false);
@@ -541,7 +629,8 @@ export default function PetMarket() {
         )}
       </main>
 
-      {selected && <DetailModal item={selected} onClose={() => setSelected(null)} onChat={item => { setSelected(null); setChatItem(item); }} onSave={handleSave} user={user} onAuthRequired={() => setShowAuth(true)} onView={handleView} />}
+      {selected && <DetailModal item={selected} onClose={() => setSelected(null)} onChat={item => { setSelected(null); setChatItem(item); }} onSave={handleSave} user={user} onAuthRequired={() => setShowAuth(true)} onView={handleView} onReport={item => { setSelected(null); setReportItem(item); }} />}
+      {reportItem && <ReportModal item={reportItem} onClose={() => setReportItem(null)} user={user} />}
       {chatItem && <ChatModal item={chatItem} onClose={() => setChatItem(null)} />}
       {showAdd && <AddModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuthSuccess={() => setShowAuth(false)} />}
