@@ -458,51 +458,47 @@ export default function PetMarket() {
       </nav>
 
       <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)" }}>
-        <div style={{ maxWidth:1180, margin:"0 auto", padding:"28px 24px 20px", display:"flex", alignItems:"center", gap:32, position:"relative", overflow:"hidden" }}>
-
-          {/* Dekorativní kruhy */}
-          <div style={{ position:"absolute", right:-20, top:-40, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.04)", pointerEvents:"none" }} />
-          <div style={{ position:"absolute", right:80, bottom:-50, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,0.04)", pointerEvents:"none" }} />
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:"20px 24px 16px", display:"flex", alignItems:"center", gap:24, position:"relative", overflow:"hidden" }}>
 
           {/* Levá část — text, search, statistiky */}
           <div style={{ flex:1, zIndex:1, minWidth:0 }}>
-            <p style={{ color:"rgba(255,255,255,0.65)", fontSize:"0.68rem", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 8px" }}>Tržiště pro mazlíčky · ČR & SK</p>
-            <h1 style={{ color:"var(--white)", fontSize:"clamp(1.3rem,2.5vw,1.75rem)", marginBottom:6, letterSpacing:"-0.02em", lineHeight:1.25 }}>
-              Vše pro tvého mazlíčka<br/>— z druhé ruky
+            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.65rem", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 6px" }}>Tržiště pro mazlíčky · ČR & SK</p>
+            <h1 style={{ color:"var(--white)", fontSize:"clamp(1.2rem,2.2vw,1.55rem)", marginBottom:4, letterSpacing:"-0.02em", lineHeight:1.25 }}>
+              Vše pro tvého mazlíčka — z druhé ruky
             </h1>
-            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.85rem", marginBottom:20, lineHeight:1.6 }}>
+            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.8rem", marginBottom:14, lineHeight:1.5 }}>
               Kupuj, prodávej, najdi veterináře nebo hotel.
             </p>
 
             {/* Search bar */}
-            <div style={{ display:"flex", background:"var(--white)", borderRadius:50, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", marginBottom:18, maxWidth:520 }}>
-              <span style={{ display:"flex", alignItems:"center", padding:"0 14px", color:"var(--text-light)", fontSize:"1rem", flexShrink:0 }}>🔍</span>
-              <input className="input-field" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1, border:"none", background:"transparent", borderRadius:0, padding:"11px 6px", minWidth:0 }} placeholder="Hledat pelíšek, granule, klec…" />
-              <button className="btn-primary" style={{ borderRadius:50, margin:4, padding:"9px 18px", fontSize:"0.85rem", flexShrink:0 }} onClick={() => {}}>Hledat</button>
+            <div style={{ display:"flex", background:"var(--white)", borderRadius:50, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", marginBottom:14, maxWidth:500 }}>
+              <span style={{ display:"flex", alignItems:"center", padding:"0 12px", color:"var(--text-light)", fontSize:"0.95rem", flexShrink:0 }}>🔍</span>
+              <input className="input-field" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1, border:"none", background:"transparent", borderRadius:0, padding:"9px 4px", minWidth:0, fontSize:"0.85rem" }} placeholder="Hledat pelíšek, granule, klec…" />
+              <button className="btn-primary" style={{ borderRadius:50, margin:4, padding:"8px 16px", fontSize:"0.8rem", flexShrink:0 }} onClick={() => {}}>Hledat</button>
             </div>
 
             {/* Statistiky */}
-            <div style={{ display:"flex", gap:20, alignItems:"center", flexWrap:"wrap" }}>
+            <div style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
               {[
                 { value:`${items.length}+`, label:"inzerátů" },
                 { value:"350+", label:"prodejců" },
                 { value:"47", label:"měst" },
                 { value:"4.8 ★", label:"hodnocení", gold:true },
               ].map((s, i, arr) => (
-                <div key={s.label} style={{ display:"flex", alignItems:"center", gap:20 }}>
+                <div key={s.label} style={{ display:"flex", alignItems:"center", gap:16 }}>
                   <div style={{ textAlign:"center" }}>
-                    <div style={{ color: s.gold ? "#f5c97a" : "var(--white)", fontSize:"0.95rem", fontWeight:700 }}>{s.value}</div>
-                    <div style={{ color:"rgba(255,255,255,0.55)", fontSize:"0.7rem" }}>{s.label}</div>
+                    <div style={{ color: s.gold ? "#f5c97a" : "var(--white)", fontSize:"0.88rem", fontWeight:700 }}>{s.value}</div>
+                    <div style={{ color:"rgba(255,255,255,0.5)", fontSize:"0.65rem" }}>{s.label}</div>
                   </div>
-                  {i < arr.length - 1 && <div style={{ width:1, height:28, background:"rgba(255,255,255,0.2)" }} />}
+                  {i < arr.length - 1 && <div style={{ width:1, height:22, background:"rgba(255,255,255,0.2)" }} />}
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Pravá část — pejsek + kočka SVG */}
-          <div style={{ flexShrink:0, zIndex:1, display:"flex", alignItems:"flex-end" }}>
-            <svg width="200" height="190" viewBox="0 0 200 190" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Pravá část — pejsek + kočka SVG — menší */}
+          <div style={{ flexShrink:0, zIndex:1, display:"flex", alignItems:"flex-end", opacity:0.95 }}>
+            <svg width="150" height="142" viewBox="0 0 200 190" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="72" cy="155" rx="45" ry="36" fill="#f5c97a"/>
               <circle cx="72" cy="100" r="36" fill="#f5c97a"/>
               <ellipse cx="52" cy="80" rx="14" ry="22" fill="#e8a84a" transform="rotate(-12 52 80)"/>
@@ -544,11 +540,11 @@ export default function PetMarket() {
         </div>
 
         {/* Service buttons */}
-        <div style={{ maxWidth:1180, margin:"0 auto", padding:"0 24px 0", display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:"0 24px 0", display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
           {SERVICES.map(service => (
             <button key={service.id} className={`service-btn ${activeService === service.id ? "active" : ""}`} onClick={() => handleServiceClick(service)}>
-              <span style={{ fontSize:"1.5rem" }}>{service.icon}</span>
-              <span style={{ fontSize:"0.7rem", fontWeight:600, textAlign:"center", lineHeight:1.2, maxWidth:80 }}>{service.label}</span>
+              <span style={{ fontSize:"1.4rem" }}>{service.icon}</span>
+              <span style={{ fontSize:"0.68rem", fontWeight:600, textAlign:"center", lineHeight:1.2, maxWidth:80 }}>{service.label}</span>
             </button>
           ))}
         </div>
