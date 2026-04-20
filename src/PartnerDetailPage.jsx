@@ -33,7 +33,7 @@ export default function PartnerDetailPage() {
   const [reviews, setReviews] = useState([]);
 
   const [showReservationForm, setShowReservationForm] = useState(false);
-  const [resForm, setResForm] = useState({ name: "", email: "", phone: "", date_from: "", date_to: "", num_dogs: 1, notes: "" });
+  const [resForm, setResForm] = useState({ name: "", email: "", phone: "", date_from: "", date_to: "", walk_time: "", pickup_address: "", num_dogs: 1, notes: "" });
   const [resSaving, setResSaving] = useState(false);
   const [resMsg, setResMsg] = useState("");
   const [resSuccess, setResSuccess] = useState(false);
@@ -73,11 +73,11 @@ export default function PartnerDetailPage() {
     if (!resForm.name || !resForm.email || !resForm.date_from || !resForm.date_to) {
       setResMsg("⚠️ Vyplň všechna povinná pole."); return;
     }
-    if (nights <= 0) { setResMsg("⚠️ Datum odjezdu musí být po datu příjezdu."); return; }
+    if (partner.type !== "vencitel" && nights <= 0) { setResMsg("⚠️ Datum odjezdu musí být po datu příjezdu."); return; }
     setResSaving(true); setResMsg("");
 
     const unitPrice = partner?.metadata?.[cfg.priceKey] || 0;
-    const totalPrice = unitPrice * nights * resForm.num_dogs;
+    const totalPrice = partner.type === "vencitel" ? unitPrice * resForm.num_dogs : unitPrice * nights * resForm.num_dogs;
 
     const { error } = await supabase.from("reservations").insert({
       partner_id: partner.id,
@@ -105,6 +105,8 @@ export default function PartnerDetailPage() {
         _partnerConditions: partner.conditions || "",
         _dateFrom: resForm.date_from,
         _dateTo: resForm.date_to,
+        _walkTime: resForm.walk_time || "",
+        _pickupAddress: resForm.pickup_address || "",
         _numDogs: resForm.num_dogs,
         _nights: nights,
         _totalPrice: totalPrice,
@@ -112,7 +114,7 @@ export default function PartnerDetailPage() {
         buyer_email: resForm.email,
         buyer_phone: resForm.phone || "",
         notes: resForm.notes || "",
-        buyer_address: "",
+        buyer_address: resForm.pickup_address || "",
         total_price: totalPrice,
         shipping_name: "",
         shipping_price: 0,
@@ -453,9 +455,21 @@ export default function PartnerDetailPage() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {partner.type === "vencitel" ? (
-                      <div>
-                        <label style={labelStyle}>Datum procházky *</label>
-                        <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <label style={labelStyle}>Datum procházky *</label>
+                            <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label style={labelStyle}>Čas vyzvednutí *</label>
+                            <input type="time" style={inputStyle} value={resForm.walk_time} onChange={e => setResForm(f => ({ ...f, walk_time: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Adresa vyzvednutí *</label>
+                          <input style={inputStyle} value={resForm.pickup_address} onChange={e => setResForm(f => ({ ...f, pickup_address: e.target.value }))} placeholder="Václavské náměstí 1, Praha" />
+                        </div>
                       </div>
                     ) : (
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -491,7 +505,7 @@ export default function PartnerDetailPage() {
                     <div><label style={labelStyle}>Poznámka</label><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={resForm.notes} onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))} placeholder="Speciální požadavky..." /></div>
                     {resMsg && <div style={{ fontSize: "0.85rem", color: "#b91c1c" }}>{resMsg}</div>}
                     <button onClick={handleReservation} disabled={resSaving} style={{ width: "100%", background: resSaving ? "#b5cec0" : cfg.color, color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 700, cursor: resSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                      {resSaving ? "Odesílám..." : `✓ Odeslat rezervaci (${totalPrice} Kč)`}
+                      {resSaving ? "Odesílám..." : partner.type === "vencitel" ? `✓ Objednat procházku (${unitPrice * resForm.num_dogs} Kč)` : `✓ Odeslat rezervaci (${totalPrice} Kč)`}
                     </button>
                     <button onClick={() => setShowReservationForm(false)} style={{ background: "none", border: "none", color: "#8a9e92", fontSize: "0.82rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zrušit</button>
                   </div>
@@ -535,7 +549,7 @@ export default function PartnerDetailPage() {
                   {cfg.ctaIcon} {cfg.cta}
                 </button>
               )}
-              {(partner.web || partner.website) && (
+              {(partner.web || partner.website) && partner.type !== "vencitel" && (
                 <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", background: "#f7f4ef", color: cfg.color, border: `1.5px solid ${cfg.color}40`, borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
                   🌐 Navštívit web
                 </a>
@@ -553,6 +567,15 @@ export default function PartnerDetailPage() {
             <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "14px 16px", fontSize: "0.78rem", color: "#2d6a4f", textAlign: "center" }}>
               ✓ Ověřený partner Pet Market
             </div>
+
+            {partner.type === "vencitel" && partner.metadata?.gps_tracking && (
+              <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px", border: "1px solid #b7d9c7" }}>
+                <div style={{ fontWeight: 700, color: "#2d6a4f", fontSize: "0.85rem", marginBottom: 8 }}>📍 GPS tracking procházky</div>
+                <p style={{ color: "#4a5e52", fontSize: "0.78rem", lineHeight: 1.6, margin: 0 }}>
+                  Po potvrzení rezervace vám venčitel zašle odkaz pro sledování polohy v reálném čase přes Google Maps. Budete vědět kde váš pes právě je.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
