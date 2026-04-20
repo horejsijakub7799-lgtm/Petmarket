@@ -33,7 +33,7 @@ export default function PartnerDetailPage() {
   const [reviews, setReviews] = useState([]);
 
   const [showReservationForm, setShowReservationForm] = useState(false);
-  const [resForm, setResForm] = useState({ name: "", email: "", phone: "", date_from: "", date_to: "", walk_time: "", pickup_address: "", num_dogs: 1, notes: "" });
+  const [resForm, setResForm] = useState({ name: "", email: "", phone: "", date_from: "", date_to: "", walk_time: "", walk_end_time: "", pickup_address: "", num_dogs: 1, notes: "", walk_type: "fixed" });
   const [resSaving, setResSaving] = useState(false);
   const [resMsg, setResMsg] = useState("");
   const [resSuccess, setResSuccess] = useState(false);
@@ -59,6 +59,14 @@ export default function PartnerDetailPage() {
   const fetchReviews = async (partnerId) => {
     const { data } = await supabase.from("reviews").select("*").eq("partner_id", partnerId).order("created_at", { ascending: false });
     if (data) setReviews(data);
+  };
+
+  const calcWalkHours = () => {
+    if (!resForm.walk_time || !resForm.walk_end_time) return 0;
+    const [sh, sm] = resForm.walk_time.split(":").map(Number);
+    const [eh, em] = resForm.walk_end_time.split(":").map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    return Math.max(0, diff / 60);
   };
 
   const calcNights = () => {
@@ -178,8 +186,11 @@ export default function PartnerDetailPage() {
   const cfg = TYPE_CONFIG[partner.type] || TYPE_CONFIG.hotel;
   const fotos = partner.cover_photo ? [partner.cover_photo, ...(partner.foto_urls || [])] : (partner.foto_urls || []);
   const unitPrice = partner?.metadata?.[cfg.priceKey] || 0;
+  const pricePerHour = partner?.metadata?.price_per_hour || 0;
+  const walkHours = calcWalkHours();
   const nights = calcNights();
   const totalPrice = unitPrice * Math.max(nights, 1) * resForm.num_dogs;
+  const walkHourlyTotal = Math.round(pricePerHour * walkHours * resForm.num_dogs);
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
 
   // Otevírací doba — veterináři mají přímo v opening_hours, ostatní v metadata.opening_hours
@@ -252,8 +263,15 @@ export default function PartnerDetailPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: partner.metadata?.experience ? 16 : 0 }}>
                   {partner.metadata?.price_per_walk && (
                     <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "14px 16px" }}>
-                      <div style={{ fontSize: "0.7rem", color: "#2d6a4f", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Cena za procházku</div>
+                      <div style={{ fontSize: "0.7rem", color: "#2d6a4f", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Fixní procházka</div>
                       <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.price_per_walk} Kč</div>
+                      {partner.metadata?.walk_duration_min && <div style={{ fontSize: "0.72rem", color: "#4a5e52", marginTop: 2 }}>{partner.metadata.walk_duration_min} min</div>}
+                    </div>
+                  )}
+                  {partner.metadata?.price_per_hour && (
+                    <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#2d6a4f", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Hodinová sazba</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.price_per_hour} Kč/h</div>
                     </div>
                   )}
                   {partner.metadata?.walk_duration_min && (
@@ -456,15 +474,36 @@ export default function PartnerDetailPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {partner.type === "vencitel" ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {/* Výběr typu procházky */}
+                        {partner.metadata?.price_per_walk && partner.metadata?.price_per_hour ? (
+                          <div>
+                            <label style={labelStyle}>Typ procházky</label>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              <button onClick={() => setResForm(f => ({ ...f, walk_type: "fixed" }))} style={{ padding: "10px", borderRadius: 10, border: `2px solid ${resForm.walk_type === "fixed" ? "#2d6a4f" : "#ede8e0"}`, background: resForm.walk_type === "fixed" ? "#e8f5ef" : "#fff", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: "0.82rem", fontWeight: resForm.walk_type === "fixed" ? 700 : 400, color: resForm.walk_type === "fixed" ? "#2d6a4f" : "#4a5e52" }}>
+                                🦮 Fixní<br/><span style={{ fontSize: "0.75rem" }}>{partner.metadata.price_per_walk} Kč / {partner.metadata.walk_duration_min} min</span>
+                              </button>
+                              <button onClick={() => setResForm(f => ({ ...f, walk_type: "hourly" }))} style={{ padding: "10px", borderRadius: 10, border: `2px solid ${resForm.walk_type === "hourly" ? "#2d6a4f" : "#ede8e0"}`, background: resForm.walk_type === "hourly" ? "#e8f5ef" : "#fff", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: "0.82rem", fontWeight: resForm.walk_type === "hourly" ? 700 : 400, color: resForm.walk_type === "hourly" ? "#2d6a4f" : "#4a5e52" }}>
+                                ⏱ Hodinová<br/><span style={{ fontSize: "0.75rem" }}>{partner.metadata.price_per_hour} Kč / hod</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                        {/* Datum + čas */}
+                        <div>
+                          <label style={labelStyle}>Datum procházky *</label>
+                          <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
+                        </div>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                           <div>
-                            <label style={labelStyle}>Datum procházky *</label>
-                            <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
-                          </div>
-                          <div>
-                            <label style={labelStyle}>Čas vyzvednutí *</label>
+                            <label style={labelStyle}>Čas začátku *</label>
                             <input type="time" style={inputStyle} value={resForm.walk_time} onChange={e => setResForm(f => ({ ...f, walk_time: e.target.value }))} />
                           </div>
+                          {resForm.walk_type === "hourly" && (
+                            <div>
+                              <label style={labelStyle}>Čas konce *</label>
+                              <input type="time" style={inputStyle} value={resForm.walk_end_time} onChange={e => setResForm(f => ({ ...f, walk_end_time: e.target.value }))} />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <label style={labelStyle}>Adresa vyzvednutí *</label>
@@ -483,12 +522,23 @@ export default function PartnerDetailPage() {
                         {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n === 1 ? "pes" : n < 5 ? "psi" : "psů"}</option>)}
                       </select>
                     </div>
-                    {partner.type === "vencitel" && unitPrice > 0 && (
+                    {partner.type === "vencitel" && (resForm.walk_type === "fixed" ? unitPrice > 0 : walkHours > 0 && pricePerHour > 0) && (
                       <div style={{ background: cfg.light, borderRadius: 10, padding: "12px 14px" }}>
-                        <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{unitPrice} Kč × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
-                          <span>Celkem</span><span>{unitPrice * resForm.num_dogs} Kč</span>
-                        </div>
+                        {resForm.walk_type === "fixed" ? (
+                          <>
+                            <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{unitPrice} Kč × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
+                              <span>Celkem</span><span>{unitPrice * resForm.num_dogs} Kč</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{pricePerHour} Kč/h × {walkHours.toFixed(1)} h × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
+                              <span>Celkem</span><span>{walkHourlyTotal} Kč</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     {partner.type !== "vencitel" && nights > 0 && (
@@ -505,7 +555,7 @@ export default function PartnerDetailPage() {
                     <div><label style={labelStyle}>Poznámka</label><textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={resForm.notes} onChange={e => setResForm(f => ({ ...f, notes: e.target.value }))} placeholder="Speciální požadavky..." /></div>
                     {resMsg && <div style={{ fontSize: "0.85rem", color: "#b91c1c" }}>{resMsg}</div>}
                     <button onClick={handleReservation} disabled={resSaving} style={{ width: "100%", background: resSaving ? "#b5cec0" : cfg.color, color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 700, cursor: resSaving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                      {resSaving ? "Odesílám..." : partner.type === "vencitel" ? `✓ Objednat procházku (${unitPrice * resForm.num_dogs} Kč)` : `✓ Odeslat rezervaci (${totalPrice} Kč)`}
+                      {resSaving ? "Odesílám..." : partner.type === "vencitel" ? `✓ Objednat procházku (${resForm.walk_type === "hourly" ? walkHourlyTotal : unitPrice * resForm.num_dogs} Kč)` : `✓ Odeslat rezervaci (${totalPrice} Kč)`}
                     </button>
                     <button onClick={() => setShowReservationForm(false)} style={{ background: "none", border: "none", color: "#8a9e92", fontSize: "0.82rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zrušit</button>
                   </div>

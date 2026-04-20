@@ -123,6 +123,7 @@ export default function PartnerDashboard() {
       setSluzbyForm({
         price_per_walk: data.metadata?.price_per_walk || "",
         walk_duration_min: data.metadata?.walk_duration_min || 30,
+        price_per_hour: data.metadata?.price_per_hour || "",
         area_radius_km: data.metadata?.area_radius_km || "",
         max_dogs: data.metadata?.max_dogs || 1,
         gps_tracking: data.metadata?.gps_tracking || false,
@@ -489,9 +490,25 @@ export default function PartnerDashboard() {
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>⚙️ Moje služby</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  <div><label style={labelStyle}>Cena za procházku (Kč)</label><input type="number" style={inputStyle} value={sluzbyForm.price_per_walk} onChange={e => setSluzbyForm(f => ({ ...f, price_per_walk: e.target.value }))} placeholder="200" /></div>
-                  <div><label style={labelStyle}>Délka procházky (min)</label><input type="number" style={inputStyle} value={sluzbyForm.walk_duration_min} onChange={e => setSluzbyForm(f => ({ ...f, walk_duration_min: e.target.value }))} placeholder="30" /></div>
+                <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px", border: "1px solid #b7d9c7", marginBottom: 4 }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>💰 Ceník</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={labelStyle}>Fixní procházka (Kč)</label>
+                      <input type="number" style={inputStyle} value={sluzbyForm.price_per_walk} onChange={e => setSluzbyForm(f => ({ ...f, price_per_walk: e.target.value }))} placeholder="200" />
+                      <div style={{ fontSize: "0.68rem", color: "#8a9e92", marginTop: 4 }}>Pevná cena za procházku</div>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Délka fixní (min)</label>
+                      <input type="number" style={inputStyle} value={sluzbyForm.walk_duration_min} onChange={e => setSluzbyForm(f => ({ ...f, walk_duration_min: e.target.value }))} placeholder="45" />
+                      <div style={{ fontSize: "0.68rem", color: "#8a9e92", marginTop: 4 }}>Délka fixní procházky</div>
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Hodinová sazba (Kč/h)</label>
+                      <input type="number" style={inputStyle} value={sluzbyForm.price_per_hour} onChange={e => setSluzbyForm(f => ({ ...f, price_per_hour: e.target.value }))} placeholder="150" />
+                      <div style={{ fontSize: "0.68rem", color: "#8a9e92", marginTop: 4 }}>Cena za hodinu venčení</div>
+                    </div>
+                  </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div><label style={labelStyle}>Radius oblasti (km)</label><input type="number" style={inputStyle} value={sluzbyForm.area_radius_km} onChange={e => setSluzbyForm(f => ({ ...f, area_radius_km: e.target.value }))} placeholder="5" /></div>
