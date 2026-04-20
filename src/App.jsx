@@ -291,10 +291,10 @@ function DetailModal({ item, onClose, onChat, onSave, user, onAuthRequired, onVi
             ))}
           </div>
           {/* Varování před podvodem */}
-          <div style={{ background:"#fff8e1", border:"1px solid #f5c99a", borderRadius:10, padding:"10px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
-            <span style={{ fontSize:"1rem", flexShrink:0 }}>⚠️</span>
-            <span style={{ fontSize:"0.78rem", color:"#7a5c00", lineHeight:1.5 }}>
-              <strong>Nikdy neplaťte mimo platformu.</strong> Platby přes WhatsApp, Western Union nebo předem na účet jsou typickým znakem podvodu.
+          <div style={{ background:"#f0f7f4", border:"1px solid #b7d9c7", borderRadius:10, padding:"10px 14px", marginBottom:12, display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontSize:"1rem", flexShrink:0 }}>🔒</span>
+            <span style={{ fontSize:"0.78rem", color:"#2d5a3d", lineHeight:1.5 }}>
+              <strong>Vaše bezpečnost je pro nás priorita.</strong> Pro ochranu vašich osobních a platebních údajů doporučujeme komunikovat a platit výhradně přes Pet Market. Nikdy nesdílejte platební údaje mimo platformu.
             </span>
           </div>
           <div style={{ display:"flex", gap:10 }}>
