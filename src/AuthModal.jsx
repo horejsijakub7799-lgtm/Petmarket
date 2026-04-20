@@ -217,7 +217,7 @@ export default function AuthModal({ onClose, onAuthSuccess }) {
                   <button onClick={() => { setMode("login"); clearMessages(); }} style={{ background: "none", border: "none", color: "#2d6a4f", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "'DM Sans', sans-serif" }}>Přihlásit se</button>
                 </span>
                 <div style={{ background: "#f0f7f4", borderRadius: 10, padding: "10px 14px", border: "1px solid #b7d9c7", textAlign: "center" }}>
-                  <span style={{ fontSize: "0.78rem", color: "#4a5e52" }}>Jsi veterinář, hotel nebo venčitel?{" "}</span>
+                  <span style={{ fontSize: "0.78rem", color: "#4a5e52" }}>Jsi veterinář, hotel, venčitel nebo prodejce?{" "}</span>
                   <a href="/partneri" style={{ fontSize: "0.78rem", color: "#2d6a4f", fontWeight: 700, textDecoration: "none" }}>Zaregistruj se jako partner →</a>
                 </div>
               </>

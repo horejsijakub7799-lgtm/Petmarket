@@ -458,89 +458,43 @@ export default function PetMarket() {
       </nav>
 
       <div style={{ background:"linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)" }}>
-        <div style={{ maxWidth:1100, margin:"0 auto", padding:"20px 24px 16px", display:"flex", alignItems:"center", gap:24, position:"relative", overflow:"hidden" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:"28px 24px 20px", textAlign:"center" }}>
+          <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.65rem", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 8px" }}>Tržiště pro mazlíčky · ČR & SK</p>
+          <h1 style={{ color:"var(--white)", fontSize:"clamp(1.3rem,2.5vw,1.8rem)", marginBottom:6, letterSpacing:"-0.02em", lineHeight:1.25 }}>
+            Vše pro tvého mazlíčka — z druhé ruky
+          </h1>
+          <p style={{ color:"rgba(255,255,255,0.65)", fontSize:"0.85rem", marginBottom:20, lineHeight:1.6 }}>
+            Kupuj, prodávej, najdi veterináře nebo hotel.
+          </p>
 
-          {/* Levá část — text, search, statistiky */}
-          <div style={{ flex:1, zIndex:1, minWidth:0 }}>
-            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.65rem", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", margin:"0 0 6px" }}>Tržiště pro mazlíčky · ČR & SK</p>
-            <h1 style={{ color:"var(--white)", fontSize:"clamp(1.2rem,2.2vw,1.55rem)", marginBottom:4, letterSpacing:"-0.02em", lineHeight:1.25 }}>
-              Vše pro tvého mazlíčka — z druhé ruky
-            </h1>
-            <p style={{ color:"rgba(255,255,255,0.6)", fontSize:"0.8rem", marginBottom:14, lineHeight:1.5 }}>
-              Kupuj, prodávej, najdi veterináře nebo hotel.
-            </p>
-
-            {/* Search bar */}
-            <div style={{ display:"flex", background:"var(--white)", borderRadius:50, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", marginBottom:14, maxWidth:500 }}>
-              <span style={{ display:"flex", alignItems:"center", padding:"0 12px", color:"var(--text-light)", fontSize:"0.95rem", flexShrink:0 }}>🔍</span>
-              <input className="input-field" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1, border:"none", background:"transparent", borderRadius:0, padding:"9px 4px", minWidth:0, fontSize:"0.85rem" }} placeholder="Hledat pelíšek, granule, klec…" />
-              <button className="btn-primary" style={{ borderRadius:50, margin:4, padding:"8px 16px", fontSize:"0.8rem", flexShrink:0 }} onClick={() => {}}>Hledat</button>
-            </div>
-
-            {/* Statistiky */}
-            <div style={{ display:"flex", gap:16, alignItems:"center", flexWrap:"wrap" }}>
-              {[
-                { value:`${items.length}+`, label:"inzerátů" },
-                { value:"350+", label:"prodejců" },
-                { value:"47", label:"měst" },
-                { value:"4.8 ★", label:"hodnocení", gold:true },
-              ].map((s, i, arr) => (
-                <div key={s.label} style={{ display:"flex", alignItems:"center", gap:16 }}>
-                  <div style={{ textAlign:"center" }}>
-                    <div style={{ color: s.gold ? "#f5c97a" : "var(--white)", fontSize:"0.88rem", fontWeight:700 }}>{s.value}</div>
-                    <div style={{ color:"rgba(255,255,255,0.5)", fontSize:"0.65rem" }}>{s.label}</div>
-                  </div>
-                  {i < arr.length - 1 && <div style={{ width:1, height:22, background:"rgba(255,255,255,0.2)" }} />}
-                </div>
-              ))}
-            </div>
+          {/* Search bar — vycentrovaný */}
+          <div style={{ display:"flex", background:"var(--white)", borderRadius:50, overflow:"hidden", boxShadow:"0 4px 20px rgba(0,0,0,0.15)", marginBottom:20, maxWidth:560, margin:"0 auto 20px" }}>
+            <span style={{ display:"flex", alignItems:"center", padding:"0 14px", color:"var(--text-light)", fontSize:"1rem", flexShrink:0 }}>🔍</span>
+            <input className="input-field" value={search} onChange={e=>setSearch(e.target.value)} style={{ flex:1, border:"none", background:"transparent", borderRadius:0, padding:"11px 4px", minWidth:0, fontSize:"0.88rem" }} placeholder="Hledat pelíšek, granule, klec…" />
+            <button className="btn-primary" style={{ borderRadius:50, margin:4, padding:"9px 20px", fontSize:"0.85rem", flexShrink:0 }} onClick={() => {}}>Hledat</button>
           </div>
 
-          {/* Pravá část — pejsek + kočka SVG — menší */}
-          <div style={{ flexShrink:0, zIndex:1, display:"flex", alignItems:"flex-end", opacity:0.95 }}>
-            <svg width="150" height="142" viewBox="0 0 200 190" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <ellipse cx="72" cy="155" rx="45" ry="36" fill="#f5c97a"/>
-              <circle cx="72" cy="100" r="36" fill="#f5c97a"/>
-              <ellipse cx="52" cy="80" rx="14" ry="22" fill="#e8a84a" transform="rotate(-12 52 80)"/>
-              <ellipse cx="92" cy="80" rx="14" ry="22" fill="#e8a84a" transform="rotate(12 92 80)"/>
-              <ellipse cx="72" cy="108" rx="22" ry="18" fill="#fde9b8"/>
-              <circle cx="62" cy="97" r="6" fill="#2d2d2d"/><circle cx="63.5" cy="95.5" r="2" fill="#fff"/>
-              <circle cx="82" cy="97" r="6" fill="#2d2d2d"/><circle cx="83.5" cy="95.5" r="2" fill="#fff"/>
-              <ellipse cx="72" cy="112" rx="5.5" ry="4" fill="#d4734a"/>
-              <path d="M66 117 Q72 122 78 117" stroke="#d4734a" strokeWidth="2" fill="none" strokeLinecap="round"/>
-              <rect x="52" y="175" width="16" height="14" rx="8" fill="#f5c97a"/>
-              <rect x="76" y="175" width="16" height="14" rx="8" fill="#f5c97a"/>
-              <path d="M115 148 Q138 128 130 108" stroke="#e8a84a" strokeWidth="11" fill="none" strokeLinecap="round"/>
-              <rect x="55" y="129" width="34" height="8" rx="4" fill="#2d6a4f"/>
-              <circle cx="72" cy="137" r="3.5" fill="#f5c97a" stroke="#1a4a35" strokeWidth="1"/>
-              <circle cx="72" cy="143" r="5" fill="#e07b39"/>
-              <ellipse cx="145" cy="158" rx="42" ry="32" fill="#9cb8d4"/>
-              <circle cx="145" cy="105" r="34" fill="#9cb8d4"/>
-              <polygon points="122,88 112,58 134,82" fill="#9cb8d4"/>
-              <polygon points="124,86 116,62 132,80" fill="#e8b0b0"/>
-              <polygon points="168,88 178,58 156,82" fill="#9cb8d4"/>
-              <polygon points="166,86 174,62 158,80" fill="#e8b0b0"/>
-              <ellipse cx="145" cy="113" rx="20" ry="17" fill="#b8cfe0"/>
-              <ellipse cx="135" cy="100" rx="7" ry="8" fill="#5a9e80"/>
-              <ellipse cx="135" cy="100" rx="3" ry="7" fill="#1a1a1a"/><circle cx="133" cy="97" r="2" fill="#fff"/>
-              <ellipse cx="155" cy="100" rx="7" ry="8" fill="#5a9e80"/>
-              <ellipse cx="155" cy="100" rx="3" ry="7" fill="#1a1a1a"/><circle cx="153" cy="97" r="2" fill="#fff"/>
-              <polygon points="145,112 142,116 148,116" fill="#c45a5a"/>
-              <path d="M140,117 Q145,121 150,117" stroke="#c45a5a" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-              <line x1="110" y1="114" x2="134" y2="116" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2"/>
-              <line x1="110" y1="119" x2="134" y2="119" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2"/>
-              <line x1="156" y1="116" x2="180" y2="114" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2"/>
-              <line x1="156" y1="119" x2="180" y2="119" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2"/>
-              <rect x="126" y="176" width="15" height="13" rx="7" fill="#9cb8d4"/>
-              <rect x="149" y="176" width="15" height="13" rx="7" fill="#9cb8d4"/>
-              <rect x="129" y="132" width="32" height="8" rx="4" fill="#e07b39"/>
-              <circle cx="145" cy="140" r="3.5" fill="#f5c97a"/>
-            </svg>
+          {/* Statistiky — vycentrované */}
+          <div style={{ display:"flex", gap:20, alignItems:"center", justifyContent:"center", flexWrap:"wrap", marginBottom:4 }}>
+            {[
+              { value:`${items.length}+`, label:"inzerátů" },
+              { value:"350+", label:"prodejců" },
+              { value:"47", label:"měst" },
+              { value:"4.8 ★", label:"hodnocení", gold:true },
+            ].map((s, i, arr) => (
+              <div key={s.label} style={{ display:"flex", alignItems:"center", gap:20 }}>
+                <div style={{ textAlign:"center" }}>
+                  <div style={{ color: s.gold ? "#f5c97a" : "var(--white)", fontSize:"0.9rem", fontWeight:700 }}>{s.value}</div>
+                  <div style={{ color:"rgba(255,255,255,0.5)", fontSize:"0.65rem" }}>{s.label}</div>
+                </div>
+                {i < arr.length - 1 && <div style={{ width:1, height:22, background:"rgba(255,255,255,0.2)" }} />}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Service buttons */}
-        <div style={{ maxWidth:1100, margin:"0 auto", padding:"0 24px 0", display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", padding:"12px 24px 0", display:"flex", gap:4, flexWrap:"wrap", justifyContent:"center" }}>
           {SERVICES.map(service => (
             <button key={service.id} className={`service-btn ${activeService === service.id ? "active" : ""}`} onClick={() => handleServiceClick(service)}>
               <span style={{ fontSize:"1.4rem" }}>{service.icon}</span>
