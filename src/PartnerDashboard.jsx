@@ -311,6 +311,45 @@ export default function PartnerDashboard() {
     setBoostSending(false);
   };
 
+  const handleDeleteAccount = async () => {
+    if (!confirm("Opravdu chceš smazat svůj účet? Tato akce je nevratná.")) return;
+    if (!confirm("Jsi si absolutně jistý? Všechna data budou smazána.")) return;
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Informuj admina
+      await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+        body: JSON.stringify({
+          sellerEmail: "horejsi.jakub7799@gmail.com", sellerName: "Admin",
+          order: {
+            _isNewRegistration: true,
+            _registrantName: `ŽÁDOST O SMAZÁNÍ ÚČTU: ${partnerProfile.name}`,
+            _registrantType: partnerProfile.type,
+            _registrantTier: partnerProfile.tier,
+            buyer_email: partnerProfile.email,
+            buyer_phone: partnerProfile.phone,
+            buyer_address: `${partnerProfile.address || ""}, ${partnerProfile.city}`,
+          },
+        }),
+      });
+      // Smaž profil z databáze
+      await supabase.from(getTable()).delete().eq("id", partnerProfile.id);
+      await signOut();
+      navigate("/");
+    } catch (err) { alert("Chyba: " + err.message); }
+  };
+
+  const handleChangeTier = async (newTier) => {
+    if (newTier === partnerProfile.tier) return;
+    const tierNames = { basic: "Basic", premium: "Premium" };
+    if (!confirm(`Přepnout na plán ${tierNames[newTier]}?`)) return;
+    const { error } = await supabase.from(getTable()).update({ tier: newTier }).eq("id", partnerProfile.id);
+    if (error) { alert("Chyba: " + error.message); return; }
+    setPartnerProfile(p => ({ ...p, tier: newTier }));
+  };
+
   const handleSignOut = async () => { await signOut(); navigate("/"); };
 
   const pending = reservations.filter(r => r.status === "pending");
@@ -729,6 +768,35 @@ export default function PartnerDashboard() {
                     <div style={{ marginBottom: 4 }}><strong>Plán:</strong> {partnerProfile?.tier === "premium" ? "⭐ Premium" : "✓ Basic"}</div>
                     <div><strong>ID profilu:</strong> {partnerProfile?.id?.slice(0, 8)}...</div>
                   </div>
+                </div>
+
+                {/* Změna předplatného */}
+                <div style={{ background: "#fff", borderRadius: 12, padding: "20px", border: "1px solid #ede8e0" }}>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 14 }}>⭐ Změna předplatného</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {[
+                      { id: "basic", name: "Basic", price: partnerProfile?.type === "vencitel" ? "299 Kč/měs" : partnerProfile?.type === "veterinar" ? "1 490 Kč/měs" : "299 Kč/měs", desc: "Základní profil v adresáři" },
+                      { id: "premium", name: "Premium", price: partnerProfile?.type === "vencitel" ? "499 Kč/měs" : partnerProfile?.type === "veterinar" ? "2 490 Kč/měs" : "499 Kč/měs", desc: "Prioritní zobrazení + statistiky" },
+                    ].map(plan => (
+                      <div key={plan.id} onClick={() => handleChangeTier(plan.id)}
+                        style={{ border: `2px solid ${partnerProfile?.tier === plan.id ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 10, padding: "14px", cursor: partnerProfile?.tier === plan.id ? "default" : "pointer", background: partnerProfile?.tier === plan.id ? "#e8f5ef" : "#fff", transition: "all 0.15s" }}>
+                        <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "0.9rem", marginBottom: 2 }}>{plan.name}</div>
+                        <div style={{ color: "#2d6a4f", fontWeight: 700, fontSize: "0.95rem", marginBottom: 4 }}>{plan.price}</div>
+                        <div style={{ fontSize: "0.72rem", color: "#8a9e92" }}>{plan.desc}</div>
+                        {partnerProfile?.tier === plan.id && <div style={{ fontSize: "0.72rem", color: "#2d6a4f", fontWeight: 700, marginTop: 6 }}>✓ Aktivní plán</div>}
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 10 }}>Změna se projeví okamžitě. Fakturace se přizpůsobí od příštího fakturačního období.</p>
+                </div>
+
+                {/* Smazání účtu */}
+                <div style={{ background: "#fff5f5", borderRadius: 12, padding: "20px", border: "1px solid #fecaca" }}>
+                  <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#b91c1c", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>⚠️ Nebezpečná zóna</div>
+                  <p style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 14, lineHeight: 1.6 }}>Smazáním účtu dojde k trvalému odstranění vašeho profilu, fotek a všech dat. Tuto akci nelze vrátit zpět.</p>
+                  <button onClick={handleDeleteAccount} style={{ background: "#fff", color: "#b91c1c", border: "1.5px solid #fecaca", borderRadius: 8, padding: "10px 18px", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                    🗑️ Smazat účet
+                  </button>
                 </div>
               </div>
             </div>
