@@ -62,11 +62,19 @@ export default function VencitelRegister() {
   const handleSubmit = async () => {
     setSaving(true); setMsg("");
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email: form.email, password: form.password });
+      // 1. Vytvoř účet
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { full_name: form.name, role: "partner" } },
+      });
       if (authError) throw authError;
-      const userId = authData.user?.id;
-      if (!userId) throw new Error("Nepodařilo se vytvořit účet.");
 
+      // 2. Získej userId — pokud signUp vrátí session, použij ji; jinak počkej
+      let userId = authData.user?.id;
+      if (!userId) throw new Error("Nepodařilo se vytvořit účet. Zkuste znovu.");
+
+      // 3. Nahraj fotky
       const fotoUrls = [];
       for (const fotka of fotky) {
         const fileName = `vencitel/${userId}/${Date.now()}_${fotka.name}`;
@@ -76,43 +84,61 @@ export default function VencitelRegister() {
         fotoUrls.push(urlData.publicUrl);
       }
 
-      const { data: partner, error: partnerError } = await supabase.from("partner_profiles").insert({
-        user_id: userId, type: "vencitel", name: form.name, address: form.address, city: form.city,
-        phone: form.phone, email: form.email, website: form.web, description: form.description,
-        metadata: { experience: form.experience, sluzby: form.sluzby, zvirata: form.zvirata,
+      // 4. Vytvoř partner_profile se správným user_id
+      const { error: partnerError } = await supabase.from("partner_profiles").insert({
+        user_id: userId,
+        type: "vencitel",
+        name: form.name,
+        address: form.address,
+        city: form.city,
+        phone: form.phone,
+        email: form.email,
+        website: form.web,
+        description: form.description,
+        metadata: {
+          experience: form.experience,
+          sluzby: form.sluzby,
+          zvirata: form.zvirata,
           price_per_walk: parseFloat(form.price_per_walk) || null,
           walk_duration_min: parseInt(form.walk_duration_min) || 30,
           area_radius_km: parseFloat(form.area_radius_km) || null,
-          gps_tracking: form.gps_tracking, group_walks: form.group_walks },
-        foto_urls: fotoUrls, tier: form.tier, approved: false,
-      }).select().single();
+          gps_tracking: form.gps_tracking,
+          group_walks: form.group_walks,
+        },
+        foto_urls: fotoUrls,
+        tier: form.tier,
+        approved: false,
+      });
       if (partnerError) throw partnerError;
 
-      const { error: venceniError } = await supabase.from("venceni_profiles").insert({
-        partner_id: partner.id,
-        price_per_walk: parseFloat(form.price_per_walk) || null,
-        walk_duration_min: parseInt(form.walk_duration_min) || 30,
-        area_radius_km: parseFloat(form.area_radius_km) || null,
-        gps_tracking: form.gps_tracking, group_walks: form.group_walks,
-      });
-      if (venceniError) throw venceniError;
-
+      // 5. Pošli email adminovi
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
-          body: JSON.stringify({ sellerEmail: "horejsi.jakub7799@gmail.com", sellerName: "Admin",
-            order: { _isNewRegistration: true, _registrantName: form.name, _registrantType: "Venčitel psů",
-              _registrantTier: form.tier, buyer_email: form.email, buyer_phone: form.phone,
-              buyer_address: `${form.address}, ${form.city}` } }),
+          body: JSON.stringify({
+            sellerEmail: "horejsi.jakub7799@gmail.com",
+            sellerName: "Admin",
+            order: {
+              _isNewRegistration: true,
+              _registrantName: form.name,
+              _registrantType: "Venčitel psů",
+              _registrantTier: form.tier,
+              buyer_email: form.email,
+              buyer_phone: form.phone,
+              buyer_address: `${form.address}, ${form.city}`,
+            },
+          }),
         });
       } catch (e) { console.error("Admin email failed:", e); }
 
       setRegisteredEmail(form.email);
       setStep(4);
-    } catch (err) { setMsg("❌ Chyba: " + err.message); }
+    } catch (err) {
+      setMsg("❌ Chyba: " + err.message);
+    }
     setSaving(false);
   };
 
@@ -237,8 +263,8 @@ export default function VencitelRegister() {
                 <label style={labelStyle}>Vyberte plán</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 8 }}>
                   {[
-                    { id: "basic", name: "Basic", price: "199 Kč/měsíc", features: ["Profil v adresáři", "Zobrazení na mapě", "Hodnocení zákazníků"] },
-                    { id: "premium", name: "Premium", price: "399 Kč/měsíc", features: ["Vše z Basic", "Chat se zákazníky", "Prioritní zobrazení", "Statistiky profilu"] },
+                    { id: "basic", name: "Basic", price: "299 Kč/měsíc", features: ["Profil v adresáři", "Zobrazení na mapě", "Hodnocení zákazníků"] },
+                    { id: "premium", name: "Premium", price: "499 Kč/měsíc", features: ["Vše z Basic", "Chat se zákazníky", "Prioritní zobrazení", "Statistiky profilu"] },
                   ].map(plan => (
                     <div key={plan.id} onClick={() => set("tier", plan.id)} style={{ border: `2px solid ${form.tier === plan.id ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 14, padding: "20px", cursor: "pointer", background: form.tier === plan.id ? "#f2faf6" : "#fff" }}>
                       <div style={{ fontWeight: 700, color: "#1c2b22", fontSize: "1rem", marginBottom: 4 }}>{plan.name}</div>
@@ -248,7 +274,7 @@ export default function VencitelRegister() {
                   ))}
                 </div>
               </div>
-              {msg && <div style={{ color: "#b91c1c", fontSize: "0.85rem" }}>{msg}</div>}
+              {msg && <div style={{ background: "#fce4ec", border: "1px solid #f48fb1", borderRadius: 10, padding: "10px 14px", fontSize: "0.85rem", color: "#880e4f" }}>{msg}</div>}
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setStep(2)} style={{ background: "#fff", color: "#4a5e52", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "12px 20px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>← Zpět</button>
                 <button onClick={handleSubmit} disabled={saving} style={{ flex: 1, background: saving ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px", fontSize: "1rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>{saving ? "Odesílám..." : "✓ Odeslat ke schválení"}</button>
@@ -262,7 +288,7 @@ export default function VencitelRegister() {
             <div style={{ fontSize: "4rem", marginBottom: 20 }}>🎉</div>
             <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.6rem", color: "#1c2b22", marginBottom: 12 }}>Žádost odeslána!</h2>
             <p style={{ color: "#4a5e52", fontSize: "0.95rem", lineHeight: 1.7, marginBottom: 12 }}>Do <strong>24 hodin</strong> vás budeme kontaktovat na email <strong>{registeredEmail}</strong>.</p>
-            <p style={{ color: "#8a9e92", fontSize: "0.85rem", marginBottom: 32 }}>Po schválení se přihlaste na <strong>petmarket-theta.vercel.app/partner/dashboard</strong> pomocí zadaného emailu a hesla.</p>
+            <p style={{ color: "#8a9e92", fontSize: "0.85rem", marginBottom: 32 }}>Po schválení se přihlaste na Pet Market pomocí zadaného emailu a hesla — automaticky se dostanete do svého dashboardu.</p>
             <button onClick={() => navigate("/")} style={{ background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "14px 32px", fontSize: "1rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zpět na Pet Market</button>
           </div>
         )}
