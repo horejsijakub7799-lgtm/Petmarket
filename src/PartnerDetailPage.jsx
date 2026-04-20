@@ -243,6 +243,53 @@ export default function PartnerDetailPage() {
               </div>
             )}
 
+            {/* VENČITEL — specifické info */}
+            {partner.type === "vencitel" && (partner.metadata?.experience || partner.metadata?.area_radius_km || partner.metadata?.gps_tracking || partner.metadata?.max_dogs) && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>🦮 O venčiteli</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: partner.metadata?.experience ? 16 : 0 }}>
+                  {partner.metadata?.price_per_walk && (
+                    <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#2d6a4f", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Cena za procházku</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.price_per_walk} Kč</div>
+                    </div>
+                  )}
+                  {partner.metadata?.walk_duration_min && (
+                    <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#4a5e52", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Délka procházky</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1c2b22", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.walk_duration_min} min</div>
+                    </div>
+                  )}
+                  {partner.metadata?.area_radius_km && (
+                    <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#4a5e52", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Oblast působení</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1c2b22", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.area_radius_km} km</div>
+                    </div>
+                  )}
+                  {partner.metadata?.max_dogs && (
+                    <div style={{ background: "#f7f4ef", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ fontSize: "0.7rem", color: "#4a5e52", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Max. psů najednou</div>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#1c2b22", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.max_dogs}</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {partner.metadata?.gps_tracking && (
+                    <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem", fontWeight: 700 }}>📍 GPS tracking</span>
+                  )}
+                  {partner.metadata?.group_walks && (
+                    <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem", fontWeight: 700 }}>👥 Skupinové procházky</span>
+                  )}
+                </div>
+                {partner.metadata?.experience && (
+                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #ede8e0" }}>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Zkušenosti & certifikáty</div>
+                    <p style={{ color: "#4a5e52", fontSize: "0.9rem", lineHeight: 1.7, margin: 0 }}>{partner.metadata.experience}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {partner.metadata?.sluzby?.length > 0 && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>Nabízené služby</h2>
@@ -401,21 +448,36 @@ export default function PartnerDetailPage() {
 
                 {!showReservationForm ? (
                   <button onClick={() => setShowReservationForm(true)} style={{ width: "100%", background: cfg.color, color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                    📅 Rezervovat termín
+                    📅 {partner.type === "vencitel" ? "Objednat procházku" : "Rezervovat termín"}
                   </button>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                      <div><label style={labelStyle}>Příjezd *</label><input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value }))} /></div>
-                      <div><label style={labelStyle}>Odjezd *</label><input type="date" style={inputStyle} value={resForm.date_to} min={resForm.date_from || new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_to: e.target.value }))} /></div>
-                    </div>
+                    {partner.type === "vencitel" ? (
+                      <div>
+                        <label style={labelStyle}>Datum procházky *</label>
+                        <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        <div><label style={labelStyle}>Příjezd *</label><input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value }))} /></div>
+                        <div><label style={labelStyle}>Odjezd *</label><input type="date" style={inputStyle} value={resForm.date_to} min={resForm.date_from || new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_to: e.target.value }))} /></div>
+                      </div>
+                    )}
                     <div>
                       <label style={labelStyle}>Počet psů</label>
                       <select style={{ ...inputStyle, cursor: "pointer" }} value={resForm.num_dogs} onChange={e => setResForm(f => ({ ...f, num_dogs: parseInt(e.target.value) }))}>
                         {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} {n === 1 ? "pes" : n < 5 ? "psi" : "psů"}</option>)}
                       </select>
                     </div>
-                    {nights > 0 && (
+                    {partner.type === "vencitel" && unitPrice > 0 && (
+                      <div style={{ background: cfg.light, borderRadius: 10, padding: "12px 14px" }}>
+                        <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{unitPrice} Kč × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
+                          <span>Celkem</span><span>{unitPrice * resForm.num_dogs} Kč</span>
+                        </div>
+                      </div>
+                    )}
+                    {partner.type !== "vencitel" && nights > 0 && (
                       <div style={{ background: cfg.light, borderRadius: 10, padding: "12px 14px" }}>
                         <div style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 4 }}>{unitPrice} Kč × {nights} {nights === 1 ? "noc" : nights < 5 ? "noci" : "nocí"} × {resForm.num_dogs} {resForm.num_dogs === 1 ? "pes" : "psů"}</div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, color: cfg.color, fontSize: "1rem" }}>
