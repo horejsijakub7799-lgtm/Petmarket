@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
+import MyOffersTab from "./MyOffersTab";
 
 const SELLER_MENU = [
   { id: "profil", label: "Profil", icon: "👤" },
@@ -9,7 +10,7 @@ const SELLER_MENU = [
   { id: "pridat", label: "Přidat inzerát", icon: "➕" },
   { id: "prijmy", label: "Příjmy & statistiky", icon: "📊" },
   { id: "hodnoceni", label: "Hodnocení", icon: "⭐" },
-  { id: "zpravy", label: "Zprávy", icon: "💬" },
+  { id: "nabidky", label: "Moje nabídky", icon: "💰" },
   { id: "heslo", label: "Změna hesla", icon: "🔒" },
 ];
 
@@ -28,126 +29,6 @@ const COND_COLORS = {
 function CondBadge({ cond }) {
   const s = COND_COLORS[cond] || { bg: "#f5f5f5", color: "#555" };
   return <span style={{ background: s.bg, color: s.color, fontSize: "0.68rem", fontWeight: 700, padding: "3px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{cond}</span>;
-}
-
-function filterMessage(text) {
-  const patterns = [
-    /\b[\w.-]+@[\w.-]+\.\w{2,}\b/gi,
-    /(\+420|00420)?\s?[0-9]{3}\s?[0-9]{3}\s?[0-9]{3}/g,
-    /\b\d{9,}\b/g,
-    /https?:\/\/[^\s]+/gi,
-    /www\.[^\s]+/gi,
-    /instagram|facebook|whatsapp|telegram|signal|viber|skype/gi,
-    /ig:|fb:|wa:|tg:/gi,
-  ];
-  let filtered = text;
-  patterns.forEach(p => { filtered = filtered.replace(p, "***"); });
-  return filtered;
-}
-
-function InboxChat({ conv, user, onClose, onRead }) {
-  const { profile } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [warning, setWarning] = useState("");
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    fetchMessages();
-    markAsRead();
-    const channel = supabase
-      .channel("inbox-" + conv.inzerat_id + "-" + user.id)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `inzerat_id=eq.${conv.inzerat_id}` }, (payload) => {
-        const msg = payload.new;
-        if (msg.sender_id === user.id || msg.receiver_id === user.id) {
-          setMessages(prev => [...prev, msg]);
-          if (msg.receiver_id === user.id) {
-            supabase.from("messages").update({ read: true }).eq("id", msg.id);
-          }
-        }
-      })
-      .subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [conv]);
-
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  const markAsRead = async () => {
-    await supabase.from("messages")
-      .update({ read: true })
-      .eq("inzerat_id", conv.inzerat_id)
-      .eq("receiver_id", user.id)
-      .eq("read", false);
-    onRead();
-  };
-
-  const fetchMessages = async () => {
-    const { data } = await supabase.from("messages").select("*")
-      .eq("inzerat_id", conv.inzerat_id)
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: true });
-    if (data) setMessages(data);
-  };
-
-  const sendMessage = async () => {
-    if (!text.trim()) return;
-    const filtered = filterMessage(text.trim());
-    if (filtered !== text.trim()) { setWarning("⚠️ Zpráva obsahuje kontaktní údaje."); return; }
-    const receiverId = conv.other_user_id;
-    if (!receiverId) return;
-    setSending(true);
-    const { data, error } = await supabase.from("messages").insert({
-      inzerat_id: conv.inzerat_id,
-      sender_id: user.id,
-      receiver_id: receiverId,
-      sender_name: profile?.name || user.email?.split("@")[0],
-      content: filtered,
-    }).select().single();
-    setSending(false);
-    if (!error && data) { setMessages(prev => [...prev, data]); setText(""); setWarning(""); }
-  };
-
-  const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-
-  const inputStyle = { flex: 1, border: "1.5px solid #ede8e0", borderRadius: 12, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", resize: "none", height: 44, lineHeight: 1.4, background: "#f7f4ef", color: "#1c2b22" };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden" }}>
-      <div style={{ padding: "16px 20px", borderBottom: "1px solid #ede8e0", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={onClose} style={{ background: "#f7f4ef", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
-        <div>
-          <div style={{ fontWeight: 600, color: "#1c2b22", fontSize: "0.95rem" }}>{conv.inzerat_title}</div>
-          <div style={{ fontSize: "0.8rem", color: "#8a9e92" }}>S uživatelem: {conv.other_user_name}</div>
-        </div>
-      </div>
-      <div style={{ padding: "6px 20px", background: "#f2faf6", borderBottom: "1px solid #ede8e0", fontSize: "0.72rem", color: "#2d6a4f" }}>
-        🔒 Nesdílej kontaktní údaje, emaily ani telefonní čísla.
-      </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {messages.map(msg => {
-          const isMe = msg.sender_id === user.id;
-          return (
-            <div key={msg.id} style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start" }}>
-              <div style={{ maxWidth: "75%", background: isMe ? "#2d6a4f" : "#f7f4ef", color: isMe ? "#fff" : "#1c2b22", borderRadius: isMe ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "10px 14px", fontSize: "0.9rem", lineHeight: 1.5 }}>
-                {!isMe && <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2d6a4f", marginBottom: 4 }}>{msg.sender_name}</div>}
-                <div>{msg.content}</div>
-                <div style={{ fontSize: "0.65rem", color: isMe ? "rgba(255,255,255,0.6)" : "#8a9e92", marginTop: 4, textAlign: "right" }}>
-                  {new Date(msg.created_at).toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
-      {warning && <div style={{ padding: "8px 20px", background: "#fce4ec", fontSize: "0.8rem", color: "#880e4f" }}>{warning}</div>}
-      <div style={{ padding: "12px 20px", borderTop: "1px solid #ede8e0", display: "flex", gap: 10 }}>
-        <textarea value={text} onChange={e => { setText(e.target.value); setWarning(""); }} onKeyDown={handleKey} placeholder="Napiš zprávu... (Enter = odeslat)" style={inputStyle} />
-        <button onClick={sendMessage} disabled={sending || !text.trim()} style={{ background: sending || !text.trim() ? "#b5cec0" : "#2d6a4f", color: "#fff", border: "none", borderRadius: 12, padding: "0 18px", cursor: "pointer", fontSize: "1.1rem" }}>➤</button>
-      </div>
-    </div>
-  );
 }
 
 function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
@@ -244,10 +125,12 @@ function InzeratDetail({ item, onClose, onUpdated, onDeleted }) {
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, maxWidth: 540, width: "100%", maxHeight: "92vh", overflowY: "auto", boxShadow: "0 12px 40px rgba(44,80,58,0.14)" }}>
         <div style={{ height: 280, background: "linear-gradient(145deg, #f2faf6, #f7f4ef)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
           {fotos ? <img src={fotos[fotoIdx]} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontSize: "5rem" }}>🐾</span>}
-          {fotos && fotos.length > 1 && <>
-            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>‹</button>
-            <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>›</button>
-          </>}
+          {fotos && fotos.length > 1 && (
+            <>
+              <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i - 1 + fotos.length) % fotos.length); }} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>‹</button>
+              <button onClick={e => { e.stopPropagation(); setFotoIdx(i => (i + 1) % fotos.length); }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.45)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: "1.2rem", fontWeight: 700, color: "#fff" }}>›</button>
+            </>
+          )}
           {item.discount_percent && <div style={{ position: "absolute", top: 14, left: 14, background: "#e07b39", color: "#fff", borderRadius: 20, padding: "4px 12px", fontSize: "0.85rem", fontWeight: 700 }}>-{item.discount_percent}%</div>}
           <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.9)", border: "none", borderRadius: "50%", width: 38, height: 38, cursor: "pointer", fontSize: "1.1rem", color: "#4a5e52", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
         </div>
@@ -384,9 +267,7 @@ export default function ProfilePage() {
   const [pwMsg, setPwMsg] = useState("");
   const [selectedInzerat, setSelectedInzerat] = useState(null);
   const [mojeInzeraty, setMojeInzeraty] = useState([]);
-  const [conversations, setConversations] = useState([]);
-  const [activeConv, setActiveConv] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingOffersCount, setPendingOffersCount] = useState(0);
   const [inzeratForm, setInzeratForm] = useState({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
   const [fotky, setFotky] = useState([]);
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
@@ -399,33 +280,38 @@ export default function ProfilePage() {
     if (data) setMojeInzeraty(data);
   };
 
-  const fetchConversations = async () => {
+  const fetchPendingOffers = async () => {
     if (!user) return;
-    const { data: msgs } = await supabase.from("messages").select("*")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: false });
-    if (!msgs) return;
-    const convMap = {};
-    for (const msg of msgs) {
-      const key = msg.inzerat_id;
-      if (!convMap[key]) {
-        const otherId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-        const otherName = msg.sender_id === user.id ? null : msg.sender_name;
-        convMap[key] = { inzerat_id: key, last_message: msg.content, last_time: msg.created_at, other_user_id: otherId, other_user_name: otherName || "Uživatel", unread: 0 };
-      }
-      if (!msg.read && msg.receiver_id === user.id) convMap[key].unread++;
-    }
-    const inzeratIds = Object.keys(convMap);
-    if (inzeratIds.length > 0) {
-      const { data: inzeraty } = await supabase.from("inzeraty").select("id, title, foto_urls").in("id", inzeratIds);
-      if (inzeraty) inzeraty.forEach(inz => { if (convMap[inz.id]) { convMap[inz.id].inzerat_title = inz.title; convMap[inz.id].inzerat_foto = inz.foto_urls?.[0]; } });
-    }
-    const convList = Object.values(convMap).sort((a, b) => new Date(b.last_time) - new Date(a.last_time));
-    setConversations(convList);
-    setUnreadCount(convList.reduce((s, c) => s + c.unread, 0));
+    // Počítej: pending offers jako seller + countered/accepted (bez order) jako buyer
+    const { data: received } = await supabase
+      .from("offers")
+      .select("id")
+      .eq("seller_id", user.id)
+      .eq("status", "pending");
+
+    const { data: sentCountered } = await supabase
+      .from("offers")
+      .select("id")
+      .eq("buyer_id", user.id)
+      .in("status", ["countered", "accepted"])
+      .is("order_id", null);
+
+    const total = (received?.length || 0) + (sentCountered?.length || 0);
+    setPendingOffersCount(total);
   };
 
-  useEffect(() => { fetchMoje(); fetchConversations(); }, [user]);
+  useEffect(() => {
+    fetchMoje();
+    fetchPendingOffers();
+
+    // Realtime pro offers — refresh counter
+    if (!user) return;
+    const channel = supabase
+      .channel(`profile-offers-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchPendingOffers())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user]);
 
   const mockPrijmy = [0, 0, 145, 0, 340, 115, 0, 0, 0, 0, 0, 0];
   const mockHodnoceni = [
@@ -534,8 +420,8 @@ export default function ProfilePage() {
             {SELLER_MENU.map((item, i) => (
               <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none", borderBottom: i < SELLER_MENU.length - 1 ? "1px solid #f7f4ef" : "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400, color: activeTab === item.id ? "#2d6a4f" : "#4a5e52", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
                 <span>{item.icon}</span>{item.label}
-                {item.id === "zpravy" && unreadCount > 0 && <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 8px", fontSize: "0.72rem", fontWeight: 700 }}>{unreadCount}</span>}
-                {activeTab === item.id && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
+                {item.id === "nabidky" && pendingOffersCount > 0 && <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 8px", fontSize: "0.72rem", fontWeight: 700 }}>{pendingOffersCount}</span>}
+                {activeTab === item.id && pendingOffersCount === 0 && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
               </button>
             ))}
             <button onClick={handleSignOut} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "none", borderTop: "1px solid #f7f4ef", cursor: "pointer", fontSize: "0.88rem", color: "#b91c1c", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
@@ -711,49 +597,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "zpravy" && (
-            <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #ede8e0", overflow: "hidden", minHeight: 400 }}>
-              {activeConv ? (
-                <div style={{ height: 520 }}>
-                  <InboxChat conv={activeConv} user={user} onClose={() => { setActiveConv(null); fetchConversations(); }} onRead={fetchConversations} />
-                </div>
-              ) : (
-                <>
-                  <div style={{ padding: "24px 28px", borderBottom: "1px solid #ede8e0" }}>
-                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", margin: 0 }}>Zprávy</h2>
-                  </div>
-                  {conversations.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "60px 20px", color: "#8a9e92" }}>
-                      <div style={{ fontSize: "3rem", marginBottom: 16 }}>💬</div>
-                      <p>Zatím žádné zprávy.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      {conversations.map(conv => (
-                        <div key={conv.inzerat_id} onClick={() => setActiveConv(conv)}
-                          style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 24px", borderBottom: "1px solid #f7f4ef", cursor: "pointer", background: conv.unread > 0 ? "#f2faf6" : "#fff" }}
-                          onMouseOver={e => e.currentTarget.style.background = "#f7f4ef"}
-                          onMouseOut={e => e.currentTarget.style.background = conv.unread > 0 ? "#f2faf6" : "#fff"}>
-                          <div style={{ width: 48, height: 48, borderRadius: 10, background: "#e8f5ef", overflow: "hidden", flexShrink: 0 }}>
-                            {conv.inzerat_foto ? <img src={conv.inzerat_foto} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.3rem" }}>🐾</div>}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: conv.unread > 0 ? 700 : 600, color: "#1c2b22", marginBottom: 3, fontSize: "0.9rem" }}>{conv.inzerat_title || "Inzerát"}</div>
-                            <div style={{ fontSize: "0.8rem", color: "#8a9e92", marginBottom: 2 }}>S: {conv.other_user_name}</div>
-                            <div style={{ fontSize: "0.8rem", color: "#4a5e52", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conv.last_message}</div>
-                          </div>
-                          <div style={{ textAlign: "right", flexShrink: 0 }}>
-                            <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginBottom: 4 }}>{new Date(conv.last_time).toLocaleDateString("cs-CZ")}</div>
-                            {conv.unread > 0 && <div style={{ background: "#2d6a4f", color: "#fff", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 700, marginLeft: "auto" }}>{conv.unread}</div>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+          {activeTab === "nabidky" && <MyOffersTab user={user} profile={profile} />}
 
           {activeTab === "heslo" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
