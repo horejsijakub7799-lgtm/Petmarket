@@ -1047,7 +1047,7 @@ export default function PetMarket() {
 
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 24px 14px", display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap", position: "relative" }}>
           {/* LEFT — Content */}
-          <div style={{ flex: "1 1 440px", minWidth: 280 }}>
+          <div style={{ flex: "1 1 440px", minWidth: 280, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ display: "inline-block", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", color: "#fff", padding: "3px 10px", borderRadius: 20, fontSize: "0.68rem", fontWeight: 600, marginBottom: 10, border: "1px solid rgba(255,255,255,0.2)" }}>
               🇨🇿 Tržiště pro mazlíčky · Celá ČR
             </div>
@@ -1058,14 +1058,14 @@ export default function PetMarket() {
               Kupuj a prodávej věci pro mazlíčky, najdi veterináře, hotel nebo pojištění. Vše na jednom místě.
             </p>
 
-            <div style={{ display: "flex", background: "#fff", borderRadius: 50, overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.2)", maxWidth: 480, marginBottom: 12 }}>
+            <div style={{ display: "flex", background: "#fff", borderRadius: 50, overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.2)", width: "100%", maxWidth: 480, marginBottom: 12 }}>
               <span style={{ display: "flex", alignItems: "center", padding: "0 12px 0 16px", color: "var(--text-light)", fontSize: "0.95rem", flexShrink: 0 }}>🔍</span>
               <input className="input-field" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: "none", background: "transparent", borderRadius: 0, padding: "9px 4px", minWidth: 0, fontSize: "0.85rem" }} placeholder="Hledat pelíšek, granule, klec…" />
               <button className="btn-primary" style={{ borderRadius: 50, margin: 4, padding: "7px 18px", fontSize: "0.82rem", flexShrink: 0 }} onClick={() => { }}>Hledat</button>
             </div>
 
             {/* Stats inline */}
-            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
               {[
                 { value: `${items.length}+`, label: "inzerátů" },
                 { value: "350+", label: "prodejců" },
