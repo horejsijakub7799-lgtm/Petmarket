@@ -554,6 +554,7 @@ function BuyFromOfferForm({ offer, user, profile, finalPrice, onBack, onSuccess 
           total_products: finalPrice,
           total_price: totalPrice,
           status: "pending_payment",
+          offer_id: offer.id,
         })
         .select()
         .single();
