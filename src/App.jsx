@@ -104,7 +104,7 @@ const PREDEFINED_QUESTIONS = [
   "Bylo zboží někdy opravováno?",
 ];
 
-const CONTACT_FILTER_REGEX = /(\+?\d[\d\s\-]{7,})|(\b\w+@\w+\.\w+)|(revolut|iban|paypal|\b(u[cč]et|bank|p[řr]evod|hotovost|kontakt|telefon|email|e-mail|mobil|whatsapp|messenger)\b)/i;
+const CONTACT_FILTER_REGEX = /(\+?\d[\d\s\-]{7,})|(\b\w+@\w+\.\w+)|(revolut|iban|paypal|\b(u[cč]et|bank|p[řr]evod|hotovost|kontakt|telefon|email|e-mail|mobil|whatsapp|messenger|signal|viber|telegram|instagram|facebook|fb|ig)\b)/i;
 
 function CondBadge({ cond }) {
   const s = COND_COLORS[cond] || { bg: "#f5f5f5", color: "#555" };
@@ -247,7 +247,6 @@ function ReportModal({ item, onClose, user }) {
 
 function OfferModal({ item, onClose, user, onSuccess }) {
   const [offeredPrice, setOfferedPrice] = useState("");
-  const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -264,9 +263,6 @@ function OfferModal({ item, onClose, user, onSuccess }) {
     if (!price || price <= 0) return setError("Zadej platnou cenu");
     if (price >= itemPrice) return setError(`Nabídka musí být nižší než ${itemPrice} Kč`);
     if (price < itemPrice * 0.3) return setError(`Nabídka je příliš nízká (min. ${Math.round(itemPrice * 0.3)} Kč)`);
-    if (message && CONTACT_FILTER_REGEX.test(message)) {
-      return setError("Zpráva nesmí obsahovat kontakty. Komunikuj přes platformu.");
-    }
 
     setSaving(true);
     setError("");
@@ -280,7 +276,6 @@ function OfferModal({ item, onClose, user, onSuccess }) {
           seller_id: item.seller_id,
           original_price: itemPrice,
           offered_price: price,
-          message: message.trim() || null,
           status: "pending",
         })
         .select()
@@ -302,7 +297,6 @@ function OfferModal({ item, onClose, user, onSuccess }) {
               _itemTitle: item.title,
               _originalPrice: itemPrice,
               _offeredPrice: price,
-              _message: message.trim() || "(bez zpravy)",
               _offerId: offer.id,
             },
           }),
@@ -360,21 +354,6 @@ function OfferModal({ item, onClose, user, onSuccess }) {
               onChange={e => setOfferedPrice(e.target.value)}
               style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--green)" }}
             />
-          </div>
-
-          <div>
-            <label className="label">Krátká zpráva prodejci (volitelné)</label>
-            <textarea
-              className="input-field"
-              style={{ minHeight: 60, resize: "vertical" }}
-              maxLength={200}
-              placeholder="Např. Jsem z Prahy, můžu rychle vyzvednout..."
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-            />
-            <div style={{ fontSize: "0.7rem", color: "var(--text-light)", marginTop: 4, textAlign: "right" }}>
-              {message.length}/200
-            </div>
           </div>
 
           {error && <div style={{ background: "#fee", color: "#b91c1c", padding: "10px 14px", borderRadius: 10, fontSize: "0.85rem" }}>{error}</div>}

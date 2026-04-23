@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
 import MyOffersTab from "./MyOffersTab";
+import MyQuestionsTab from "./MyQuestionsTab";
 
 const SELLER_MENU = [
   { id: "profil", label: "Profil", icon: "👤" },
@@ -11,6 +12,7 @@ const SELLER_MENU = [
   { id: "prijmy", label: "Příjmy & statistiky", icon: "📊" },
   { id: "hodnoceni", label: "Hodnocení", icon: "⭐" },
   { id: "nabidky", label: "Moje nabídky", icon: "💰" },
+  { id: "otazky", label: "Moje otázky", icon: "❓" },
   { id: "heslo", label: "Změna hesla", icon: "🔒" },
 ];
 
@@ -268,6 +270,7 @@ export default function ProfilePage() {
   const [selectedInzerat, setSelectedInzerat] = useState(null);
   const [mojeInzeraty, setMojeInzeraty] = useState([]);
   const [pendingOffersCount, setPendingOffersCount] = useState(0);
+  const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0);
   const [inzeratForm, setInzeratForm] = useState({ title: "", price: "", city: "", desc: "", kategorie: "", zvire: "", stav: "Nový" });
   const [fotky, setFotky] = useState([]);
   const [fotkyPreviews, setFotkyPreviews] = useState([]);
@@ -280,35 +283,25 @@ export default function ProfilePage() {
     if (data) setMojeInzeraty(data);
   };
 
-  const fetchPendingOffers = async () => {
+  const fetchPendingCounts = async () => {
     if (!user) return;
-    // Počítej: pending offers jako seller + countered/accepted (bez order) jako buyer
-    const { data: received } = await supabase
-      .from("offers")
-      .select("id")
-      .eq("seller_id", user.id)
-      .eq("status", "pending");
+    const { data: receivedOffers } = await supabase.from("offers").select("id").eq("seller_id", user.id).eq("status", "pending");
+    const { data: sentOffers } = await supabase.from("offers").select("id").eq("buyer_id", user.id).in("status", ["countered", "accepted"]).is("order_id", null);
+    setPendingOffersCount((receivedOffers?.length || 0) + (sentOffers?.length || 0));
 
-    const { data: sentCountered } = await supabase
-      .from("offers")
-      .select("id")
-      .eq("buyer_id", user.id)
-      .in("status", ["countered", "accepted"])
-      .is("order_id", null);
-
-    const total = (received?.length || 0) + (sentCountered?.length || 0);
-    setPendingOffersCount(total);
+    const { data: receivedQuestions } = await supabase.from("questions").select("id").eq("seller_id", user.id).is("answer", null);
+    setPendingQuestionsCount(receivedQuestions?.length || 0);
   };
 
   useEffect(() => {
     fetchMoje();
-    fetchPendingOffers();
+    fetchPendingCounts();
 
-    // Realtime pro offers — refresh counter
     if (!user) return;
     const channel = supabase
-      .channel(`profile-offers-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchPendingOffers())
+      .channel(`profile-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () => fetchPendingCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "questions" }, () => fetchPendingCounts())
       .subscribe();
     return () => supabase.removeChannel(channel);
   }, [user]);
@@ -395,6 +388,12 @@ export default function ProfilePage() {
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.95rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
 
+  const getBadgeCount = (id) => {
+    if (id === "nabidky") return pendingOffersCount;
+    if (id === "otazky") return pendingQuestionsCount;
+    return 0;
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
@@ -417,13 +416,16 @@ export default function ProfilePage() {
             <span style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "3px 12px", fontSize: "0.78rem", fontWeight: 600 }}>{roleLabel[role] || "🐾 Uživatel"}</span>
           </div>
           <div style={{ background: "#fff", borderRadius: 16, overflow: "hidden", border: "1px solid #ede8e0" }}>
-            {SELLER_MENU.map((item, i) => (
-              <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none", borderBottom: i < SELLER_MENU.length - 1 ? "1px solid #f7f4ef" : "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400, color: activeTab === item.id ? "#2d6a4f" : "#4a5e52", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
-                <span>{item.icon}</span>{item.label}
-                {item.id === "nabidky" && pendingOffersCount > 0 && <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 8px", fontSize: "0.72rem", fontWeight: 700 }}>{pendingOffersCount}</span>}
-                {activeTab === item.id && pendingOffersCount === 0 && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
-              </button>
-            ))}
+            {SELLER_MENU.map((item, i) => {
+              const badgeCount = getBadgeCount(item.id);
+              return (
+                <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: activeTab === item.id ? "#e8f5ef" : "#fff", border: "none", borderBottom: i < SELLER_MENU.length - 1 ? "1px solid #f7f4ef" : "none", cursor: "pointer", fontSize: "0.88rem", fontWeight: activeTab === item.id ? 600 : 400, color: activeTab === item.id ? "#2d6a4f" : "#4a5e52", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
+                  <span>{item.icon}</span>{item.label}
+                  {badgeCount > 0 && <span style={{ marginLeft: "auto", background: "#e07b39", color: "#fff", borderRadius: 20, padding: "1px 8px", fontSize: "0.72rem", fontWeight: 700 }}>{badgeCount}</span>}
+                  {activeTab === item.id && badgeCount === 0 && <span style={{ marginLeft: "auto", color: "#2d6a4f" }}>›</span>}
+                </button>
+              );
+            })}
             <button onClick={handleSignOut} style={{ width: "100%", padding: "13px 20px", display: "flex", alignItems: "center", gap: 12, background: "#fff", border: "none", borderTop: "1px solid #f7f4ef", cursor: "pointer", fontSize: "0.88rem", color: "#b91c1c", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
               <span>🚪</span> Odhlásit se
             </button>
@@ -598,6 +600,8 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "nabidky" && <MyOffersTab user={user} profile={profile} />}
+
+          {activeTab === "otazky" && <MyQuestionsTab user={user} profile={profile} />}
 
           {activeTab === "heslo" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
