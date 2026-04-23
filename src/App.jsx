@@ -1023,9 +1023,12 @@ export default function PetMarket() {
             {savedCount > 0 && <div style={{ background: "var(--green-light)", color: "var(--green)", borderRadius: 20, padding: "6px 14px", fontSize: "0.8rem", fontWeight: 700, border: "1px solid #b7d9c7" }}>♥ {savedCount}</div>}
             {user ? (
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button className="btn-secondary" style={{ padding: "8px 16px" }} onClick={() => window.location.href = isPartner ? "/partner/dashboard" : "/profil"}>
-                  {isPartner ? "🏨" : "👤"} {userName}
+                <button className="btn-secondary" style={{ padding: "8px 16px" }} onClick={() => window.location.href = "/profil"}>
+                  👤 {userName}
                 </button>
+                {isPartner && (
+                  <button className="btn-secondary" style={{ padding: "8px 16px", borderColor: "var(--green)", color: "var(--green)" }} onClick={() => window.location.href = "/partner/dashboard"}>🏨 Dashboard</button>
+                )}
                 {isApprovedSeller && (
                   <button className="btn-secondary" style={{ padding: "8px 16px", borderColor: "var(--green)", color: "var(--green)" }} onClick={() => window.location.href = "/seller/dashboard"}>🏪 Můj obchod</button>
                 )}
@@ -1034,7 +1037,9 @@ export default function PetMarket() {
             ) : (
               <button className="btn-secondary" style={{ padding: "8px 16px" }} onClick={() => setShowAuth(true)}>Přihlásit se</button>
             )}
-            <button className="btn-secondary" onClick={() => window.location.href = "/partneri"} style={{ padding: "10px 20px" }}>🤝 Staň se partnerem</button>
+            {!isPartner && !isApprovedSeller && (
+              <button className="btn-secondary" onClick={() => window.location.href = "/partneri"} style={{ padding: "10px 20px" }}>🤝 Staň se partnerem</button>
+            )}
             <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding: "10px 20px" }}>+ Prodat</button>
           </div>
         </div>
