@@ -373,18 +373,11 @@ function OfferModal({ item, onClose, user, onSuccess }) {
 
 function QuestionModal({ item, onClose, user, onSuccess }) {
   const [selectedQuestion, setSelectedQuestion] = useState("");
-  const [customQuestion, setCustomQuestion] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async () => {
-    const question = selectedQuestion || customQuestion.trim();
-    if (!question) return setError("Vyber otázku ze seznamu nebo napiš vlastní");
-    if (question.length < 5) return setError("Otázka je příliš krátká");
-    if (question.length > 200) return setError("Otázka je příliš dlouhá (max 200 znaků)");
-    if (CONTACT_FILTER_REGEX.test(question)) {
-      return setError("Otázka nesmí obsahovat kontakty. Komunikuj přes platformu.");
-    }
+    if (!selectedQuestion) return setError("Vyber otázku ze seznamu");
 
     setSaving(true);
     setError("");
@@ -396,8 +389,8 @@ function QuestionModal({ item, onClose, user, onSuccess }) {
           inzerat_id: item.id,
           buyer_id: user.id,
           seller_id: item.seller_id,
-          question_type: selectedQuestion ? "predefined" : "custom",
-          question: question,
+          question_type: "predefined",
+          question: selectedQuestion,
         })
         .select()
         .single();
@@ -416,7 +409,7 @@ function QuestionModal({ item, onClose, user, onSuccess }) {
             order: {
               _isQuestion: true,
               _itemTitle: item.title,
-              _question: question,
+              _question: selectedQuestion,
               _questionId: data.id,
             },
           }),
@@ -440,50 +433,25 @@ function QuestionModal({ item, onClose, user, onSuccess }) {
         </div>
 
         <div style={{ padding: "20px 26px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-mid)" }}>
-            Vyber otázku ze seznamu nebo napiš vlastní:
-          </p>
-
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {PREDEFINED_QUESTIONS.map(q => (
               <button
                 key={q}
                 className={`question-chip ${selectedQuestion === q ? "active" : ""}`}
-                onClick={() => { setSelectedQuestion(q); setCustomQuestion(""); }}
+                onClick={() => setSelectedQuestion(q)}
               >
                 {q}
               </button>
             ))}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1, height: 1, background: "var(--sand-dark)" }} />
-            <span style={{ fontSize: "0.75rem", color: "var(--text-light)", fontWeight: 600 }}>NEBO</span>
-            <div style={{ flex: 1, height: 1, background: "var(--sand-dark)" }} />
-          </div>
-
-          <div>
-            <label className="label">Vlastní otázka</label>
-            <textarea
-              className="input-field"
-              style={{ minHeight: 80, resize: "vertical" }}
-              maxLength={200}
-              placeholder="Napiš svou otázku (bez kontaktů)..."
-              value={customQuestion}
-              onChange={e => { setCustomQuestion(e.target.value); setSelectedQuestion(""); }}
-            />
-            <div style={{ fontSize: "0.7rem", color: "var(--text-light)", marginTop: 4, textAlign: "right" }}>
-              {customQuestion.length}/200
-            </div>
-          </div>
-
           {error && <div style={{ background: "#fee", color: "#b91c1c", padding: "10px 14px", borderRadius: 10, fontSize: "0.85rem" }}>{error}</div>}
 
           <div style={{ background: "#fff8e1", border: "1px solid #ffecb3", borderRadius: 10, padding: "10px 14px", fontSize: "0.75rem", color: "#7a5b00", lineHeight: 1.5 }}>
-            ⚠️ <strong>Bez kontaktů:</strong> Telefon, email a platební údaje jsou zakázané. Komunikace a platba výhradně přes Pet Market.
+            ⚠️ <strong>Bez kontaktů:</strong> Komunikace a platba výhradně přes Pet Market.
           </div>
 
-          <button className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: "1rem" }} onClick={handleSubmit} disabled={saving}>
+          <button className="btn-primary" style={{ width: "100%", padding: "14px", fontSize: "1rem" }} onClick={handleSubmit} disabled={saving || !selectedQuestion}>
             {saving ? "Odesílám..." : "Odeslat otázku"}
           </button>
         </div>
