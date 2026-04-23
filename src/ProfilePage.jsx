@@ -318,7 +318,7 @@ export default function ProfilePage() {
     setSaving(true);
     const { error } = await supabase.from("profiles").update({ name: form.name, city: form.city, bio: form.bio }).eq("id", user.id);
     setSaving(false);
-    if (error) { setMsg("Chyba."); return; }
+    if (error) { setMsg("Chyba: " + error.message); console.error(error); return; }
     await fetchProfile(user.id); setMsg("✅ Uloženo!"); setEditing(false);
     setTimeout(() => setMsg(""), 3000);
   };
