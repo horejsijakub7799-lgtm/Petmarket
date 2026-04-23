@@ -4,6 +4,7 @@ import { useAuth } from "./useAuth";
 import { supabase } from "./supabase";
 import MyOffersTab from "./MyOffersTab";
 import MyQuestionsTab from "./MyQuestionsTab";
+import MyOrdersTab from "./MyOrdersTab";
 
 const SELLER_MENU = [
   { id: "profil", label: "Profil", icon: "👤" },
@@ -13,6 +14,7 @@ const SELLER_MENU = [
   { id: "hodnoceni", label: "Hodnocení", icon: "⭐" },
   { id: "nabidky", label: "Moje nabídky", icon: "💰" },
   { id: "otazky", label: "Moje otázky", icon: "❓" },
+  { id: "objednavky", label: "Moje objednávky", icon: "📦" },
   { id: "heslo", label: "Změna hesla", icon: "🔒" },
 ];
 
@@ -602,6 +604,8 @@ export default function ProfilePage() {
           {activeTab === "nabidky" && <MyOffersTab user={user} profile={profile} />}
 
           {activeTab === "otazky" && <MyQuestionsTab user={user} profile={profile} />}
+
+          {activeTab === "objednavky" && <MyOrdersTab user={user} />}
 
           {activeTab === "heslo" && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
