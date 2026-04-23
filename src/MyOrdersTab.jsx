@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 
 const STATUS_CONFIG = {
+  pending: { bg: "#fff8e1", color: "#e65100", label: "⏳ Čeká na platbu" },
   pending_payment: { bg: "#fff8e1", color: "#e65100", label: "⏳ Čeká na platbu" },
   paid: { bg: "#e8f5e9", color: "#1b5e20", label: "💰 Zaplaceno" },
   shipped: { bg: "#e3f2fd", color: "#0d47a1", label: "📦 Odesláno" },
