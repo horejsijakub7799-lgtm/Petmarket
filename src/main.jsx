@@ -19,6 +19,7 @@ import PojisteniPage from './PojisteniPage.jsx'
 import PartnerDetailPage from './PartnerDetailPage.jsx'
 import PartnerDashboard from './PartnerDashboard.jsx'
 import RadyPage from './RadyPage.jsx'
+import RadyDetailPage from './RadyDetailPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
