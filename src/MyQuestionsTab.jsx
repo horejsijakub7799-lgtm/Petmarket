@@ -215,20 +215,11 @@ function QuestionRow({ question, mode, onClick }) {
 
 function QuestionDetail({ question, mode, user, onClose, onUpdate }) {
   const [selectedAnswer, setSelectedAnswer] = useState("");
-  const [customAnswer, setCustomAnswer] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleAnswer = async () => {
-    const answer = selectedAnswer || customAnswer.trim();
-    if (!answer) return setError("Vyber odpověď ze seznamu nebo napiš vlastní");
-    if (answer.length < 2) return setError("Odpověď je příliš krátká");
-    if (answer.length > 150) return setError("Odpověď je příliš dlouhá (max 150 znaků)");
-
-    // Anti-bypass filter
-    if (CONTACT_FILTER_REGEX.test(answer)) {
-      return setError("Odpověď nesmí obsahovat kontakty ani odkazy na externí platformy. Komunikace probíhá výhradně přes Pet Market.");
-    }
+    if (!selectedAnswer) return setError("Vyber odpověď ze seznamu");
 
     setSaving(true);
     setError("");
@@ -237,7 +228,7 @@ function QuestionDetail({ question, mode, user, onClose, onUpdate }) {
       const { error: updateError } = await supabase
         .from("questions")
         .update({
-          answer: answer,
+          answer: selectedAnswer,
           answered_at: new Date().toISOString(),
         })
         .eq("id", question.id);
@@ -258,7 +249,7 @@ function QuestionDetail({ question, mode, user, onClose, onUpdate }) {
               _isQuestionAnswered: true,
               _itemTitle: question.inzerat?.title || "Inzerát",
               _question: question.question,
-              _answer: answer,
+              _answer: selectedAnswer,
               _questionId: question.id,
             },
           }),
@@ -327,16 +318,15 @@ function QuestionDetail({ question, mode, user, onClose, onUpdate }) {
         {mode === "received" && !question.answer && (
           <>
             <div style={{ background: "#fff8e1", border: "1px solid #ffecb3", borderRadius: 10, padding: "12px 14px", fontSize: "0.8rem", color: "#7a5b00", lineHeight: 1.5 }}>
-              ⚠️ <strong>Pozor:</strong> Pokud v odpovědi přesměruješ kupujícího mimo Pet Market (telefon, email, social), přijdeš o Pet Market Shield ochranu a riskuješ ban účtu. Komunikace a platba probíhá výhradně přes platformu.
+              ⚠️ <strong>Pozor:</strong> Komunikace a platba probíhá výhradně přes Pet Market.
             </div>
 
             <div>
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#4a5e52", marginBottom: 10, display: "block" }}>Vyber rychlou odpověď:</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {PREDEFINED_ANSWERS.map(a => (
                   <button
                     key={a}
-                    onClick={() => { setSelectedAnswer(a); setCustomAnswer(""); }}
+                    onClick={() => setSelectedAnswer(a)}
                     style={{
                       padding: "10px 14px",
                       borderRadius: 10,
@@ -356,54 +346,21 @@ function QuestionDetail({ question, mode, user, onClose, onUpdate }) {
               </div>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, height: 1, background: "#ede8e0" }} />
-              <span style={{ fontSize: "0.75rem", color: "#8a9e92", fontWeight: 600 }}>NEBO</span>
-              <div style={{ flex: 1, height: 1, background: "#ede8e0" }} />
-            </div>
-
-            <div>
-              <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#4a5e52", marginBottom: 6, display: "block" }}>Vlastní odpověď</label>
-              <textarea
-                style={{
-                  width: "100%",
-                  minHeight: 70,
-                  border: "1.5px solid #ede8e0",
-                  borderRadius: 10,
-                  padding: "11px 14px",
-                  fontSize: "0.9rem",
-                  outline: "none",
-                  background: "#f7f4ef",
-                  color: "#1c2b22",
-                  fontFamily: "'DM Sans', sans-serif",
-                  resize: "vertical",
-                  boxSizing: "border-box",
-                }}
-                maxLength={150}
-                placeholder="Napiš vlastní odpověď (bez kontaktů)..."
-                value={customAnswer}
-                onChange={e => { setCustomAnswer(e.target.value); setSelectedAnswer(""); }}
-              />
-              <div style={{ fontSize: "0.7rem", color: "#8a9e92", marginTop: 4, textAlign: "right" }}>
-                {customAnswer.length}/150
-              </div>
-            </div>
-
             {error && <div style={{ background: "#fee", color: "#b91c1c", padding: "10px 14px", borderRadius: 10, fontSize: "0.85rem" }}>{error}</div>}
 
             <button
               onClick={handleAnswer}
-              disabled={saving}
+              disabled={saving || !selectedAnswer}
               style={{
                 padding: "14px",
                 fontSize: "1rem",
                 fontWeight: 600,
                 borderRadius: 10,
-                cursor: "pointer",
+                cursor: (saving || !selectedAnswer) ? "not-allowed" : "pointer",
                 fontFamily: "'DM Sans', sans-serif",
                 width: "100%",
                 border: "none",
-                background: "#2d6a4f",
+                background: (saving || !selectedAnswer) ? "#b5cec0" : "#2d6a4f",
                 color: "#fff",
                 boxShadow: "0 2px 12px rgba(45,106,79,0.25)",
               }}
