@@ -61,6 +61,7 @@ const SERVICES = [
   { id: "hotel", label: "Psí hotely", icon: "🏨" },
   { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️" },
   { id: "partneri", label: "Partnerští prodejci", icon: "🤝" },
+  { id: "rady", label: "Rady pro mazlíčky", icon: "📖" },
 ];
 
 const CATS = [
@@ -976,6 +977,7 @@ export default function PetMarket() {
     else if (service.id === "venceni") window.location.href = "/venceni";
     else if (service.id === "partneri") window.location.href = "/shop";
     else if (service.id === "pojisteni") window.location.href = "/pojisteni";
+    else if (service.id === "rady") window.location.href = "/rady";
     else setComingSoon(service);
   };
 
