@@ -79,8 +79,6 @@ export default function PartnerDashboard() {
 
   const fetchPartnerProfile = async () => {
     setLoading(true);
-
-    // Nejdřív zkus partner_profiles (hotel, venčitel)
     let { data } = await supabase
       .from("partner_profiles")
       .select("*")
@@ -91,7 +89,6 @@ export default function PartnerDashboard() {
 
     let vetMode = false;
 
-    // Pokud není v partner_profiles, zkus vet_profiles
     if (!data) {
       const { data: vetData } = await supabase
         .from("vet_profiles")
@@ -203,7 +200,6 @@ export default function PartnerDashboard() {
 
   const handleSaveProfile = async () => {
     setEditSaving(true); setEditMsg("");
-    // Geocoding adresy
     const coords = await geocodeAddress(editForm.address, editForm.city);
 
     const updateData = isVet ? {
@@ -334,7 +330,6 @@ export default function PartnerDashboard() {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      // Informuj admina
       await fetch(`${supabaseUrl}/functions/v1/send-order-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
@@ -351,7 +346,6 @@ export default function PartnerDashboard() {
           },
         }),
       });
-      // Smaž profil z databáze
       await supabase.from(getTable()).delete().eq("id", partnerProfile.id);
       await signOut();
       navigate("/");
@@ -375,6 +369,9 @@ export default function PartnerDashboard() {
   const isBoosted = partnerProfile?.boosted_until && new Date(partnerProfile.boosted_until) > now;
   const boostedUntil = partnerProfile?.boosted_until ? new Date(partnerProfile.boosted_until) : null;
   const menu = partnerProfile ? getMenu(partnerProfile.type, pending.length, isBoosted) : [];
+  const hasWebsite = !!(partnerProfile?.website || partnerProfile?.web);
+  const profileViews = partnerProfile?.profile_views || 0;
+  const webClicks = partnerProfile?.web_clicks || 0;
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 6 };
@@ -434,6 +431,23 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Statistiky návštěvnosti */}
+              <div style={{ display: "grid", gridTemplateColumns: hasWebsite ? "1fr 1fr" : "1fr", gap: 16 }}>
+                <div style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
+                  <div style={{ fontSize: "1.6rem", marginBottom: 8 }}>👁</div>
+                  <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#1a4fa0", fontFamily: "'DM Serif Display', serif" }}>{profileViews}</div>
+                  <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 4 }}>Návštěv profilu</div>
+                </div>
+                {hasWebsite && (
+                  <div style={{ background: "#fff", borderRadius: 14, padding: "20px", border: "1px solid #ede8e0", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.6rem", marginBottom: 8 }}>🌐</div>
+                    <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "#e07b39", fontFamily: "'DM Serif Display', serif" }}>{webClicks}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 4 }}>Prokliků na web</div>
+                  </div>
+                )}
+              </div>
+
               {partnerProfile?.type === "veterinar" ? (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   {[
@@ -787,7 +801,6 @@ export default function PartnerDashboard() {
                   </div>
                 </div>
 
-                {/* Změna předplatného */}
                 <div style={{ background: "#fff", borderRadius: 12, padding: "20px", border: "1px solid #ede8e0" }}>
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 14 }}>⭐ Změna předplatného</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -807,7 +820,6 @@ export default function PartnerDashboard() {
                   <p style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 10 }}>Změna se projeví okamžitě. Fakturace se přizpůsobí od příštího fakturačního období.</p>
                 </div>
 
-                {/* Smazání účtu */}
                 <div style={{ background: "#fff5f5", borderRadius: 12, padding: "20px", border: "1px solid #fecaca" }}>
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#b91c1c", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>⚠️ Nebezpečná zóna</div>
                   <p style={{ fontSize: "0.82rem", color: "#4a5e52", marginBottom: 14, lineHeight: 1.6 }}>Smazáním účtu dojde k trvalému odstranění vašeho profilu, fotek a všech dat. Tuto akci nelze vrátit zpět.</p>

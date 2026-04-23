@@ -47,18 +47,35 @@ export default function PartnerDetailPage() {
 
   const fetchPartner = async () => {
     let { data } = await supabase.from("partner_profiles").select("*").eq("id", id).eq("approved", true).single();
+    let partnerTypeForTracking = null;
     if (!data) {
       const { data: vet } = await supabase.from("vet_profiles").select("*").eq("id", id).eq("approved", true).single();
-      if (vet) data = { ...vet, type: "veterinar", name: vet.clinic_name };
+      if (vet) { data = { ...vet, type: "veterinar", name: vet.clinic_name }; partnerTypeForTracking = "vet"; }
+    } else {
+      partnerTypeForTracking = "partner";
     }
     setPartner(data);
     setLoading(false);
-    if (data) fetchReviews(data.id);
+    if (data) {
+      fetchReviews(data.id);
+      // Track profile view
+      try {
+        await supabase.rpc("increment_partner_profile_views", { partner_id: data.id, partner_type: partnerTypeForTracking });
+      } catch (e) { console.error("View tracking failed:", e); }
+    }
   };
 
   const fetchReviews = async (partnerId) => {
     const { data } = await supabase.from("reviews").select("*").eq("partner_id", partnerId).order("created_at", { ascending: false });
     if (data) setReviews(data);
+  };
+
+  const handleWebClick = async () => {
+    if (!partner) return;
+    const partnerType = partner.type === "veterinar" ? "vet" : "partner";
+    try {
+      await supabase.rpc("increment_partner_web_clicks", { partner_id: partner.id, partner_type: partnerType });
+    } catch (e) { console.error("Web click tracking failed:", e); }
   };
 
   const calcWalkHours = () => {
@@ -193,9 +210,7 @@ export default function PartnerDetailPage() {
   const walkHourlyTotal = Math.round(pricePerHour * walkHours * resForm.num_dogs);
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
 
-  // Otevírací doba — veterináři mají přímo v opening_hours, ostatní v metadata.opening_hours
   const oteviraciDoba = partner.opening_hours || partner.metadata?.opening_hours || null;
-  // Tým lékařů
   const tym = partner.metadata?.tym || [];
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.88rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
@@ -256,7 +271,6 @@ export default function PartnerDetailPage() {
               </div>
             )}
 
-            {/* VENČITEL — specifické info */}
             {partner.type === "vencitel" && (partner.metadata?.experience || partner.metadata?.area_radius_km || partner.metadata?.gps_tracking || partner.metadata?.max_dogs) && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>🦮 O venčiteli</h2>
@@ -343,7 +357,6 @@ export default function PartnerDetailPage() {
               </div>
             )}
 
-            {/* TÝM LÉKAŘŮ */}
             {tym.length > 0 && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>👨‍⚕️ Náš tým</h2>
@@ -365,7 +378,6 @@ export default function PartnerDetailPage() {
               </div>
             )}
 
-            {/* OTEVÍRACÍ DOBA */}
             {oteviraciDoba && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
                 <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>Otevírací doba</h2>
@@ -474,7 +486,6 @@ export default function PartnerDetailPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {partner.type === "vencitel" ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                        {/* Výběr typu procházky */}
                         {partner.metadata?.price_per_walk && partner.metadata?.price_per_hour ? (
                           <div>
                             <label style={labelStyle}>Typ procházky</label>
@@ -488,7 +499,6 @@ export default function PartnerDetailPage() {
                             </div>
                           </div>
                         ) : null}
-                        {/* Datum + čas */}
                         <div>
                           <label style={labelStyle}>Datum procházky *</label>
                           <input type="date" style={inputStyle} value={resForm.date_from} min={new Date().toISOString().split("T")[0]} onChange={e => setResForm(f => ({ ...f, date_from: e.target.value, date_to: e.target.value }))} />
@@ -590,7 +600,7 @@ export default function PartnerDetailPage() {
                 {(partner.web || partner.website) && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "0.88rem", color: "#4a5e52" }}>
                     <span style={{ width: 32, height: 32, borderRadius: 8, background: cfg.light, display: "flex", alignItems: "center", justifyContent: "center" }}>🌐</span>
-                    <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" style={{ color: cfg.color, textDecoration: "none", fontWeight: 600 }}>{partner.web || partner.website}</a>
+                    <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" onClick={handleWebClick} style={{ color: cfg.color, textDecoration: "none", fontWeight: 600 }}>{partner.web || partner.website}</a>
                   </div>
                 )}
               </div>
@@ -600,7 +610,7 @@ export default function PartnerDetailPage() {
                 </button>
               )}
               {(partner.web || partner.website) && partner.type !== "vencitel" && (
-                <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", background: "#f7f4ef", color: cfg.color, border: `1.5px solid ${cfg.color}40`, borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
+                <a href={(partner.web || partner.website).startsWith("http") ? (partner.web || partner.website) : `https://${partner.web || partner.website}`} target="_blank" rel="noopener noreferrer" onClick={handleWebClick} style={{ display: "block", width: "100%", background: "#f7f4ef", color: cfg.color, border: `1.5px solid ${cfg.color}40`, borderRadius: 10, padding: "11px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
                   🌐 Navštívit web
                 </a>
               )}
