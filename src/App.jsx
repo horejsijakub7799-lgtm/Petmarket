@@ -1040,40 +1040,86 @@ export default function PetMarket() {
         </div>
       </nav>
 
-      <div style={{ background: "linear-gradient(135deg, var(--green) 0%, #3a7d60 100%)" }}>
-        <div style={{ maxWidth: 800, margin: "0 auto", padding: "18px 24px 14px", textAlign: "center" }}>
-          <h1 style={{ color: "var(--white)", fontSize: "clamp(1.2rem,2.2vw,1.6rem)", marginBottom: 4, letterSpacing: "-0.02em", lineHeight: 1.25 }}>
-            Vše pro tvého mazlíčka — z druhé ruky
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.8rem", marginBottom: 14, lineHeight: 1.5 }}>
-            Kupuj, prodávej, najdi veterináře nebo hotel.
-          </p>
+      <div style={{ background: "linear-gradient(135deg, #16a34a 0%, #2d6a4f 60%, #1c4e3a 100%)", position: "relative", overflow: "hidden" }}>
+        {/* Decorative pattern */}
+        <div style={{ position: "absolute", top: 0, right: 0, width: 400, height: 400, background: "radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -100, left: -100, width: 350, height: 350, background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-          <div style={{ display: "flex", background: "var(--white)", borderRadius: 50, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", maxWidth: 480, margin: "0 auto 14px" }}>
-            <span style={{ display: "flex", alignItems: "center", padding: "0 12px", color: "var(--text-light)", fontSize: "0.95rem", flexShrink: 0 }}>🔍</span>
-            <input className="input-field" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: "none", background: "transparent", borderRadius: 0, padding: "9px 4px", minWidth: 0, fontSize: "0.85rem" }} placeholder="Hledat pelíšek, granule, klec…" />
-            <button className="btn-primary" style={{ borderRadius: 50, margin: 4, padding: "8px 16px", fontSize: "0.82rem", flexShrink: 0 }} onClick={() => { }}>Hledat</button>
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "32px 24px 24px", display: "flex", alignItems: "center", gap: 40, flexWrap: "wrap", position: "relative" }}>
+          {/* LEFT — Content */}
+          <div style={{ flex: "1 1 440px", minWidth: 280 }}>
+            <div style={{ display: "inline-block", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", color: "#fff", padding: "4px 12px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 600, marginBottom: 14, border: "1px solid rgba(255,255,255,0.2)" }}>
+              🇨🇿 Tržiště pro mazlíčky · Celá ČR
+            </div>
+            <h1 style={{ color: "#fff", fontSize: "clamp(1.6rem, 3vw, 2.4rem)", marginBottom: 10, letterSpacing: "-0.02em", lineHeight: 1.15, fontFamily: "'DM Serif Display', serif" }}>
+              Vše pro tvého mazlíčka<br/>— <span style={{ color: "#f5c97a", fontStyle: "italic" }}>z druhé ruky</span>
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.95rem", marginBottom: 18, lineHeight: 1.55, maxWidth: 460 }}>
+              Kupuj a prodávej věci pro mazlíčky, najdi veterináře, hotel nebo pojištění. Vše na jednom místě.
+            </p>
+
+            <div style={{ display: "flex", background: "#fff", borderRadius: 50, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.25)", maxWidth: 520, marginBottom: 20 }}>
+              <span style={{ display: "flex", alignItems: "center", padding: "0 14px 0 18px", color: "var(--text-light)", fontSize: "1rem", flexShrink: 0 }}>🔍</span>
+              <input className="input-field" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: "none", background: "transparent", borderRadius: 0, padding: "12px 4px", minWidth: 0, fontSize: "0.92rem" }} placeholder="Hledat pelíšek, granule, klec…" />
+              <button className="btn-primary" style={{ borderRadius: 50, margin: 5, padding: "9px 22px", fontSize: "0.88rem", flexShrink: 0 }} onClick={() => { }}>Hledat</button>
+            </div>
+
+            {/* Stats inline */}
+            <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+              {[
+                { value: `${items.length}+`, label: "inzerátů" },
+                { value: "350+", label: "prodejců" },
+                { value: "4.8 ★", label: "hodnocení", gold: true },
+              ].map((s, i, arr) => (
+                <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                  <div>
+                    <div style={{ color: s.gold ? "#f5c97a" : "#fff", fontSize: "1.1rem", fontWeight: 700, fontFamily: "'DM Serif Display', serif" }}>{s.value}</div>
+                    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.7rem" }}>{s.label}</div>
+                  </div>
+                  {i < arr.length - 1 && <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.25)" }} />}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 16, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
-            {[
-              { value: `${items.length}+`, label: "inzerátů" },
-              { value: "350+", label: "prodejců" },
-              { value: "47", label: "měst" },
-              { value: "4.8 ★", label: "hodnocení", gold: true },
-            ].map((s, i, arr) => (
-              <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ color: s.gold ? "#f5c97a" : "var(--white)", fontSize: "0.85rem", fontWeight: 700 }}>{s.value}</div>
-                  <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.62rem" }}>{s.label}</div>
+          {/* RIGHT — Visual */}
+          <div style={{ flex: "1 1 300px", display: "flex", justifyContent: "center", alignItems: "center", position: "relative", minHeight: 200 }}>
+            <div style={{ position: "relative", width: "100%", maxWidth: 360, height: 220 }}>
+              {/* Floating cards with pets */}
+              <div style={{ position: "absolute", top: 0, left: "10%", background: "rgba(255,255,255,0.95)", borderRadius: 16, padding: "14px 18px", boxShadow: "0 12px 32px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 10, transform: "rotate(-4deg)" }}>
+                <div style={{ fontSize: "2rem" }}>🐕</div>
+                <div>
+                  <div style={{ fontSize: "0.72rem", color: "#8a9e92", fontWeight: 600 }}>Pelíšek L</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f" }}>450 Kč</div>
                 </div>
-                {i < arr.length - 1 && <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.2)" }} />}
               </div>
-            ))}
+
+              <div style={{ position: "absolute", top: "40%", right: 0, background: "rgba(255,255,255,0.95)", borderRadius: 16, padding: "14px 18px", boxShadow: "0 12px 32px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 10, transform: "rotate(3deg)" }}>
+                <div style={{ fontSize: "2rem" }}>🐈</div>
+                <div>
+                  <div style={{ fontSize: "0.72rem", color: "#8a9e92", fontWeight: 600 }}>Škrabadlo</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f" }}>320 Kč</div>
+                </div>
+              </div>
+
+              <div style={{ position: "absolute", bottom: 0, left: 0, background: "rgba(255,255,255,0.95)", borderRadius: 16, padding: "14px 18px", boxShadow: "0 12px 32px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 10, transform: "rotate(-2deg)" }}>
+                <div style={{ fontSize: "2rem" }}>🐹</div>
+                <div>
+                  <div style={{ fontSize: "0.72rem", color: "#8a9e92", fontWeight: 600 }}>Klec velká</div>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f" }}>890 Kč</div>
+                </div>
+              </div>
+
+              {/* Center big emoji */}
+              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", fontSize: "5rem", filter: "drop-shadow(0 8px 16px rgba(0,0,0,0.3))" }}>
+                🐾
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "10px 24px 0", display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+        {/* Services row */}
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px 20px", display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", position: "relative" }}>
           {SERVICES.map(service => (
             <button key={service.id} className={`service-btn ${activeService === service.id ? "active" : ""}`} onClick={() => handleServiceClick(service)}>
               <span style={{ fontSize: "1.4rem" }}>{service.icon}</span>
