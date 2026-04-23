@@ -18,8 +18,8 @@ import ShopPage from './ShopPage.jsx'
 import PojisteniPage from './PojisteniPage.jsx'
 import PartnerDetailPage from './PartnerDetailPage.jsx'
 import PartnerDashboard from './PartnerDashboard.jsx'
+import RadyPage from './RadyPage.jsx'
 import { AuthProvider } from './useAuth.jsx'
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
@@ -41,6 +41,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/partner/dashboard" element={<PartnerDashboard />} />
           <Route path="/partner/:id" element={<PartnerDetailPage />} />
+          <Route path="/rady" element={<RadyPage />} />
+          <Route path="/rady/:slug" element={<RadyDetailPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
