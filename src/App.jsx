@@ -58,6 +58,7 @@ const SERVICES = [
   { id: "bazar", label: "Bazar věcí", icon: "🛍️" },
   { id: "veterinar", label: "Veterinární kliniky", icon: "🩺" },
   { id: "venceni", label: "Venčení", icon: "🦮" },
+  { id: "vycvik", label: "Výcvik psů", icon: "🎓" },
   { id: "hotel", label: "Psí hotely", icon: "🏨" },
   { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️" },
   { id: "partneri", label: "Partnerští prodejci", icon: "🤝" },
@@ -975,6 +976,7 @@ export default function PetMarket() {
     else if (service.id === "veterinar") window.location.href = "/veterinari";
     else if (service.id === "hotel") window.location.href = "/hotely";
     else if (service.id === "venceni") window.location.href = "/venceni";
+    else if (service.id === "vycvik") window.location.href = "/vycvik";
     else if (service.id === "partneri") window.location.href = "/shop";
     else if (service.id === "pojisteni") window.location.href = "/pojisteni";
     else if (service.id === "rady") window.location.href = "/rady";

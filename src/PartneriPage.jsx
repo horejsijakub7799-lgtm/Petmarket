@@ -20,6 +20,15 @@ const PARTNERI = [
     available: true,
   },
   {
+    id: "vycvik",
+    icon: "🎓",
+    title: "Výcvikové středisko",
+    desc: "Nabídněte výcvik psů — individuální lekce, skupinové kurzy, agility, obranu. Oslovte majitele v okolí.",
+    price: "od 199 Kč/měsíc",
+    url: "/vycvik/registrace",
+    available: true,
+  },
+  {
     id: "veterinar",
     icon: "🩺",
     title: "Veterinární klinika",
