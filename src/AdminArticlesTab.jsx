@@ -87,10 +87,10 @@ export default function AdminArticlesTab() {
     if (!file) return;
     setUploadingImage(true);
     try {
-      const fileName = `articles/${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-      const { error: uploadError } = await supabase.storage.from("inzeraty").upload(fileName, file);
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
+      const { error: uploadError } = await supabase.storage.from("articles").upload(fileName, file);
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("inzeraty").getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from("articles").getPublicUrl(fileName);
       setForm(f => ({ ...f, cover_image: urlData.publicUrl }));
       setMsg("✅ Obrázek nahrán");
       setTimeout(() => setMsg(""), 2000);
