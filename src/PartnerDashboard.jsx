@@ -13,6 +13,7 @@ const TYPE_LABEL = {
   hotel: "🏨 Psí hotel",
   vencitel: "🦮 Venčitel",
   veterinar: "🩺 Veterinář",
+  vycvik: "🎓 Cvičák",
 };
 
 const BOOST_PLANS = [
@@ -23,6 +24,10 @@ const BOOST_PLANS = [
 ];
 
 const DNY = ["Po", "Út", "St", "Čt", "Pá", "So", "Ne"];
+const TYPY_VYCVIKU = ["Základní poslušnost", "Agility", "Obrana", "Socializace štěňat", "Klikr trénink", "Záchranářský výcvik", "Sportovní kynologie", "Dog dancing"];
+const VEKOVE_KATEGORIE = ["Štěňata", "Dospělí psi", "Senioři"];
+const FORMATY = ["Individuální", "Skupinový"];
+const MISTA = ["Vlastní cvičiště", "U klienta doma", "Venku parky/lesy"];
 
 const getMenu = (type, pendingCount, isBoosted) => {
   const base = [{ id: "prehled", label: "Přehled", icon: "📊" }];
@@ -31,6 +36,9 @@ const getMenu = (type, pendingCount, isBoosted) => {
   }
   if (type === "vencitel") {
     base.push({ id: "sluzby", label: "Moje služby", icon: "⚙️" });
+  }
+  if (type === "vycvik") {
+    base.push({ id: "vycvik_sluzby", label: "Ceník & nabídka", icon: "🎓" });
   }
   if (type === "veterinar") {
     base.push({ id: "oteviraci_doba", label: "Otevírací doba", icon: "🕐" });
@@ -70,6 +78,8 @@ export default function PartnerDashboard() {
   const [novyLekar, setNovyLekar] = useState({ jmeno: "", titul: "", specializace: "", foto: "" });
   const [lekarFotoUploading, setLekarFotoUploading] = useState(false);
   const [tymMsg, setTymMsg] = useState("");
+  const [vycvikForm, setVycvikForm] = useState(null);
+  const [vycvikMsg, setVycvikMsg] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -84,7 +94,7 @@ export default function PartnerDashboard() {
       .select("*")
       .eq("user_id", user.id)
       .eq("approved", true)
-      .in("type", ["hotel", "vencitel"])
+      .in("type", ["hotel", "vencitel", "vycvik"])
       .single();
 
     let vetMode = false;
@@ -116,6 +126,25 @@ export default function PartnerDashboard() {
       email: data.email || "",
     });
 
+    if (data.type === "vycvik") {
+      setVycvikForm({
+        price_individual: data.metadata?.price_individual || "",
+        duration_individual: data.metadata?.duration_individual || 60,
+        price_group: data.metadata?.price_group || "",
+        duration_group: data.metadata?.duration_group || 60,
+        kurz_name: data.metadata?.kurz_name || "",
+        kurz_price: data.metadata?.kurz_price || "",
+        kurz_lekci: data.metadata?.kurz_lekci || "",
+        price_note: data.metadata?.price_note || "",
+        area_radius_km: data.metadata?.area_radius_km || "",
+        typy_vycviku: data.metadata?.typy_vycviku || [],
+        vekove_kategorie: data.metadata?.vekove_kategorie || [],
+        formaty: data.metadata?.formaty || [],
+        mista: data.metadata?.mista || [],
+        experience: data.metadata?.experience || "",
+        achievements: data.metadata?.achievements || "",
+      });
+    }
     if (data.type === "vencitel") {
       setSluzbyForm({
         price_per_walk: data.metadata?.price_per_walk || "",
@@ -143,7 +172,7 @@ export default function PartnerDashboard() {
       setSpecializace(data.specializations || []);
     }
 
-    if (!vetMode) fetchReservations(data.id);
+    if (!vetMode && (data.type === "hotel" || data.type === "vencitel")) fetchReservations(data.id);
     setLoading(false);
   };
 
@@ -227,6 +256,26 @@ export default function PartnerDashboard() {
     setSluzbyMsg2("✅ Služby uloženy!");
     setPartnerProfile(p => ({ ...p, metadata: updatedMetadata }));
     setTimeout(() => setSluzbyMsg2(""), 3000);
+  };
+   const handleSaveVycvik = async () => {
+    setVycvikMsg("");
+    if (!vycvikForm.price_individual && !vycvikForm.price_group && !vycvikForm.kurz_price) {
+      setVycvikMsg("⚠️ Vyplň alespoň jednu cenovou variantu.");
+      return;
+    }
+    const updatedMetadata = { ...(partnerProfile.metadata || {}), ...vycvikForm };
+    const { error } = await supabase.from("partner_profiles").update({ metadata: updatedMetadata }).eq("id", partnerProfile.id);
+    if (error) { setVycvikMsg("❌ Chyba: " + error.message); return; }
+    setVycvikMsg("✅ Uloženo!");
+    setPartnerProfile(p => ({ ...p, metadata: updatedMetadata }));
+    setTimeout(() => setVycvikMsg(""), 3000);
+  };
+ 
+  const toggleVycvikChip = (field, value) => {
+    setVycvikForm(f => {
+      const current = f[field] || [];
+      return { ...f, [field]: current.includes(value) ? current.filter(x => x !== value) : [...current, value] };
+    });
   };
 
   const handleSaveOteviraciDoba = async () => {
@@ -598,6 +647,103 @@ export default function PartnerDashboard() {
             </div>
           )}
 
+          {activeTab === "vycvik_sluzby" && vycvikForm && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 8 }}>💰 Ceník</h2>
+                <p style={{ color: "#8a9e92", fontSize: "0.82rem", marginBottom: 20 }}>Vyplň alespoň jednu variantu. Prázdné varianty se nezobrazí.</p>
+ 
+                <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7", marginBottom: 14 }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 12 }}>🎯 Individuální lekce</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Cena (Kč)</label><input type="number" style={inputStyle} value={vycvikForm.price_individual} onChange={e => setVycvikForm(f => ({ ...f, price_individual: e.target.value }))} placeholder="600" /></div>
+                    <div><label style={labelStyle}>Délka (min)</label><input type="number" style={inputStyle} value={vycvikForm.duration_individual} onChange={e => setVycvikForm(f => ({ ...f, duration_individual: e.target.value }))} placeholder="60" /></div>
+                  </div>
+                </div>
+ 
+                <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7", marginBottom: 14 }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 12 }}>👥 Skupinová lekce</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Cena za psa (Kč)</label><input type="number" style={inputStyle} value={vycvikForm.price_group} onChange={e => setVycvikForm(f => ({ ...f, price_group: e.target.value }))} placeholder="250" /></div>
+                    <div><label style={labelStyle}>Délka (min)</label><input type="number" style={inputStyle} value={vycvikForm.duration_group} onChange={e => setVycvikForm(f => ({ ...f, duration_group: e.target.value }))} placeholder="60" /></div>
+                  </div>
+                </div>
+ 
+                <div style={{ background: "#f0f7f4", borderRadius: 12, padding: "16px 18px", border: "1px solid #b7d9c7", marginBottom: 14 }}>
+                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 12 }}>📚 Kurz (série lekcí)</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+                    <div><label style={labelStyle}>Název kurzu</label><input style={inputStyle} value={vycvikForm.kurz_name} onChange={e => setVycvikForm(f => ({ ...f, kurz_name: e.target.value }))} placeholder="Základní poslušnost" /></div>
+                    <div><label style={labelStyle}>Cena (Kč)</label><input type="number" style={inputStyle} value={vycvikForm.kurz_price} onChange={e => setVycvikForm(f => ({ ...f, kurz_price: e.target.value }))} placeholder="2500" /></div>
+                    <div><label style={labelStyle}>Počet lekcí</label><input type="number" style={inputStyle} value={vycvikForm.kurz_lekci} onChange={e => setVycvikForm(f => ({ ...f, kurz_lekci: e.target.value }))} placeholder="10" /></div>
+                  </div>
+                </div>
+ 
+                <div>
+                  <label style={labelStyle}>Poznámka k ceně (volitelné)</label>
+                  <textarea style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} value={vycvikForm.price_note} onChange={e => setVycvikForm(f => ({ ...f, price_note: e.target.value }))} placeholder="Např. První lekce zdarma, slevy pro seniory..." />
+                </div>
+              </div>
+ 
+              <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 20 }}>🎓 Nabídka a specializace</h2>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Typy výcviku</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    {TYPY_VYCVIKU.map(t => (
+                      <button key={t} onClick={() => toggleVycvikChip("typy_vycviku", t)} style={chipStyle((vycvikForm.typy_vycviku || []).includes(t))}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Věkové kategorie</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    {VEKOVE_KATEGORIE.map(t => (
+                      <button key={t} onClick={() => toggleVycvikChip("vekove_kategorie", t)} style={chipStyle((vycvikForm.vekove_kategorie || []).includes(t))}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Formát výuky</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    {FORMATY.map(t => (
+                      <button key={t} onClick={() => toggleVycvikChip("formaty", t)} style={chipStyle((vycvikForm.formaty || []).includes(t))}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Místo výcviku</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                    {MISTA.map(t => (
+                      <button key={t} onClick={() => toggleVycvikChip("mista", t)} style={chipStyle((vycvikForm.mista || []).includes(t))}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Spádová oblast (km)</label>
+                  <input type="number" style={{ ...inputStyle, maxWidth: 200 }} value={vycvikForm.area_radius_km} onChange={e => setVycvikForm(f => ({ ...f, area_radius_km: e.target.value }))} placeholder="20" />
+                  <div style={{ fontSize: "0.72rem", color: "#8a9e92", marginTop: 4 }}>Jak daleko dojíždíš za klienty</div>
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Zkušenosti & certifikáty</label>
+                  <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} value={vycvikForm.experience} onChange={e => setVycvikForm(f => ({ ...f, experience: e.target.value }))} placeholder="Např. 10 let zkušeností, certifikát ZKO..." />
+                </div>
+ 
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>🏆 Úspěchy (volitelné)</label>
+                  <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} value={vycvikForm.achievements} onChange={e => setVycvikForm(f => ({ ...f, achievements: e.target.value }))} placeholder="Např. Mistr ČR v agility 2024..." />
+                </div>
+ 
+                {vycvikMsg && <div style={{ background: vycvikMsg.includes("❌") || vycvikMsg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${vycvikMsg.includes("❌") || vycvikMsg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "12px 16px", fontSize: "0.88rem", color: vycvikMsg.includes("❌") || vycvikMsg.includes("⚠️") ? "#880e4f" : "#1b5e20", fontWeight: 600, marginBottom: 12 }}>{vycvikMsg}</div>}
+                <button onClick={handleSaveVycvik} style={{ width: "100%", background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>✓ Uložit změny</button>
+              </div>
+            </div>
+          )}
           {activeTab === "oteviraci_doba" && oteviraciDoba && (
             <div style={{ background: "#fff", borderRadius: 16, padding: "28px 32px", border: "1px solid #ede8e0" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.4rem", color: "#1c2b22", marginBottom: 24 }}>🕐 Otevírací doba</h2>
@@ -805,8 +951,8 @@ export default function PartnerDashboard() {
                   <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 14 }}>⭐ Změna předplatného</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     {[
-                      { id: "basic", name: "Basic", price: partnerProfile?.type === "vencitel" ? "299 Kč/měs" : partnerProfile?.type === "veterinar" ? "1 490 Kč/měs" : "299 Kč/měs", desc: "Základní profil v adresáři" },
-                      { id: "premium", name: "Premium", price: partnerProfile?.type === "vencitel" ? "499 Kč/měs" : partnerProfile?.type === "veterinar" ? "2 490 Kč/měs" : "499 Kč/měs", desc: "Prioritní zobrazení + statistiky" },
+                      { id: "basic", name: "Basic", price: partnerProfile?.type === "vycvik" ? "199 Kč/měs" : partnerProfile?.type === "vencitel" ? "299 Kč/měs" : partnerProfile?.type === "veterinar" ? "1 490 Kč/měs" : "299 Kč/měs", desc: "Základní profil v adresáři" },
+                      { id: "premium", name: "Premium", price: partnerProfile?.type === "vycvik" ? "399 Kč/měs" : partnerProfile?.type === "vencitel" ? "499 Kč/měs" : partnerProfile?.type === "veterinar" ? "2 490 Kč/měs" : "499 Kč/měs", desc: "Prioritní zobrazení + statistiky" },
                     ].map(plan => (
                       <div key={plan.id} onClick={() => handleChangeTier(plan.id)}
                         style={{ border: `2px solid ${partnerProfile?.tier === plan.id ? "#2d6a4f" : "#ede8e0"}`, borderRadius: 10, padding: "14px", cursor: partnerProfile?.tier === plan.id ? "default" : "pointer", background: partnerProfile?.tier === plan.id ? "#e8f5ef" : "#fff", transition: "all 0.15s" }}>
