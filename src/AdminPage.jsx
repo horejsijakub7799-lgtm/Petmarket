@@ -11,12 +11,260 @@ const TYPE_LABELS = {
   hotel: "🏨 Psí hotel",
   vencitel: "🦮 Venčitel psů",
   prodejce: "🛍️ Partnerský prodejce",
+  seller: "🏪 Prodejce",
+  vycvik: "🎓 Výcvikové středisko",
 };
+
+// Pouze tyhle typy potřebují geolokaci (zobrazují se na mapách)
+const GEOCODABLE_TYPES = ["hotel", "vencitel", "vycvik"];
+
+// ===== Admin Tools Tab =====
+function AdminToolsTab() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [geocoding, setGeocoding] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, done: [], failed: [] });
+  const [log, setLog] = useState([]);
+
+  useEffect(() => { fetchStats(); }, []);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    const { data: partners } = await supabase
+      .from("partner_profiles")
+      .select("id, type, lat, lng, approved");
+    const { data: vets } = await supabase
+      .from("vet_profiles")
+      .select("id, lat, lng, approved");
+
+    const byType = {};
+
+    // Jen hotely, venčitele a cvičáky (prodejce/seller ignorujeme)
+    (partners || []).forEach(p => {
+      if (!p.approved) return;
+      if (!GEOCODABLE_TYPES.includes(p.type)) return;
+      if (!byType[p.type]) byType[p.type] = { total: 0, missing: 0 };
+      byType[p.type].total++;
+      if (!p.lat || !p.lng) byType[p.type].missing++;
+    });
+
+    // Veterináři z vet_profiles
+    const vetStats = { total: 0, missing: 0 };
+    (vets || []).forEach(v => {
+      if (!v.approved) return;
+      vetStats.total++;
+      if (!v.lat || !v.lng) vetStats.missing++;
+    });
+    if (vetStats.total > 0) byType.veterinar = vetStats;
+
+    setStats(byType);
+    setLoading(false);
+  };
+
+  const geocodeAddress = async (address, city) => {
+    try {
+      const query = encodeURIComponent(`${address}, ${city}, Czech Republic`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch (e) { console.error("Geocoding failed:", e); }
+    return null;
+  };
+
+  const handleBatchGeocode = async () => {
+    if (!confirm("Spustit batch geokódování? Operace může trvat několik minut.\n\nNominatim limit: 1 request/s, takže počítej cca 1s na partnera.")) return;
+
+    setGeocoding(true);
+    setLog([]);
+    const logMsg = (msg) => setLog(prev => [...prev, `${new Date().toLocaleTimeString("cs-CZ")} — ${msg}`]);
+
+    logMsg("🔍 Hledám partnery bez souřadnic...");
+
+    // Jen hotely, venčitele a cvičáky - prodejce a sellery přeskakujeme
+    const { data: partners } = await supabase
+      .from("partner_profiles")
+      .select("id, name, type, address, city, lat, lng")
+      .eq("approved", true)
+      .in("type", GEOCODABLE_TYPES)
+      .or("lat.is.null,lng.is.null");
+
+    // Veterináři
+    const { data: vets } = await supabase
+      .from("vet_profiles")
+      .select("id, clinic_name, address, city, lat, lng")
+      .eq("approved", true)
+      .or("lat.is.null,lng.is.null");
+
+    const allToGeocode = [
+      ...(partners || []).map(p => ({ ...p, _table: "partner_profiles", _name: p.name, _label: TYPE_LABELS[p.type] || p.type })),
+      ...(vets || []).map(v => ({ ...v, _table: "vet_profiles", _name: v.clinic_name, _label: "🩺 Veterinář" })),
+    ];
+
+    if (allToGeocode.length === 0) {
+      logMsg("✅ Žádný partner nepotřebuje geokódování!");
+      setGeocoding(false);
+      return;
+    }
+
+    logMsg(`📍 Nalezeno ${allToGeocode.length} partnerů bez souřadnic`);
+    setProgress({ current: 0, total: allToGeocode.length, done: [], failed: [] });
+
+    const done = [];
+    const failed = [];
+
+    for (let i = 0; i < allToGeocode.length; i++) {
+      const p = allToGeocode[i];
+      setProgress({ current: i + 1, total: allToGeocode.length, done: [...done], failed: [...failed] });
+      logMsg(`[${i + 1}/${allToGeocode.length}] ${p._label} — ${p._name} (${p.city})...`);
+
+      // Nominatim rate limit: max 1 req/s
+      if (i > 0) await new Promise(r => setTimeout(r, 1100));
+
+      const coords = await geocodeAddress(p.address, p.city);
+
+      if (coords) {
+        const { error } = await supabase
+          .from(p._table)
+          .update({ lat: coords.lat, lng: coords.lng })
+          .eq("id", p.id);
+
+        if (error) {
+          logMsg(`  ❌ DB chyba: ${error.message}`);
+          failed.push(p._name);
+        } else {
+          logMsg(`  ✅ ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+          done.push(p._name);
+        }
+      } else {
+        logMsg(`  ⚠️ Nepodařilo se najít souřadnice`);
+        failed.push(p._name);
+      }
+    }
+
+    setProgress({ current: allToGeocode.length, total: allToGeocode.length, done, failed });
+    logMsg(`\n🎉 Hotovo! Úspěch: ${done.length}, Selhalo: ${failed.length}`);
+    setGeocoding(false);
+    fetchStats();
+  };
+
+  const totalMissing = stats ? Object.values(stats).reduce((sum, s) => sum + s.missing, 0) : 0;
+  const totalAll = stats ? Object.values(stats).reduce((sum, s) => sum + s.total, 0) : 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+        <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.3rem", color: "#1c2b22", marginBottom: 4 }}>🗺️ Geokódování partnerů</h2>
+        <p style={{ color: "#8a9e92", fontSize: "0.88rem", marginBottom: 8 }}>
+          Partneři bez souřadnic se nezobrazují na mapách. Použij batch geokódování pro jejich opravu.
+        </p>
+        <p style={{ color: "#8a9e92", fontSize: "0.78rem", marginBottom: 20, fontStyle: "italic" }}>
+          Geokódují se pouze: hotely, venčitelé, cvičáci, veterináři. Prodejci a sellers souřadnice nepotřebují.
+        </p>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px", color: "#8a9e92" }}>Načítám...</div>
+        ) : (
+          <>
+            {Object.keys(stats).length === 0 ? (
+              <div style={{ padding: "30px", textAlign: "center", color: "#8a9e92", background: "#f7f4ef", borderRadius: 12 }}>
+                Žádní schválení partneři v kategoriích hotel/venčitel/cvičák/veterinář.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 10, marginBottom: 20 }}>
+                  {Object.entries(stats).map(([type, s]) => (
+                    <div key={type} style={{ background: s.missing > 0 ? "#fff8e1" : "#f2faf6", border: `1px solid ${s.missing > 0 ? "#ffecb3" : "#b7d9c7"}`, borderRadius: 12, padding: "14px" }}>
+                      <div style={{ fontSize: "0.72rem", color: "#8a9e92", fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>
+                        {TYPE_LABELS[type] || type}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                        <span style={{ fontSize: "1.4rem", fontWeight: 700, color: s.missing > 0 ? "#e07b39" : "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>
+                          {s.total - s.missing}
+                        </span>
+                        <span style={{ fontSize: "0.88rem", color: "#8a9e92" }}>/ {s.total}</span>
+                      </div>
+                      {s.missing > 0 && (
+                        <div style={{ fontSize: "0.72rem", color: "#e07b39", marginTop: 4, fontWeight: 600 }}>
+                          {s.missing} bez souřadnic
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: totalMissing > 0 ? "#fff8e1" : "#f2faf6", borderRadius: 12, border: `1px solid ${totalMissing > 0 ? "#ffecb3" : "#b7d9c7"}` }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#1c2b22" }}>
+                      {totalMissing > 0
+                        ? `${totalMissing} z ${totalAll} partnerů potřebuje geokódování`
+                        : `Všichni partneři (${totalAll}) mají souřadnice ✅`}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 2 }}>
+                      Použije Nominatim API (OpenStreetMap) · ~1s/partner
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleBatchGeocode}
+                    disabled={geocoding || totalMissing === 0}
+                    style={{
+                      background: geocoding || totalMissing === 0 ? "#b5cec0" : "#2d6a4f",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "12px 22px",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      cursor: geocoding || totalMissing === 0 ? "not-allowed" : "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {geocoding ? "⏳ Probíhá..." : "🗺️ Spustit geokódování"}
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+
+      {geocoding && (
+        <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #ede8e0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: "0.85rem" }}>
+            <span style={{ fontWeight: 600, color: "#1c2b22" }}>Progress</span>
+            <span style={{ color: "#8a9e92" }}>{progress.current} / {progress.total}</span>
+          </div>
+          <div style={{ height: 8, background: "#f7f4ef", borderRadius: 8, overflow: "hidden" }}>
+            <div style={{
+              height: "100%",
+              width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
+              background: "linear-gradient(90deg, #2d6a4f, #3a7d60)",
+              transition: "width 0.3s ease"
+            }} />
+          </div>
+          <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: "0.78rem" }}>
+            <span style={{ color: "#2d6a4f" }}>✅ Hotovo: {progress.done.length}</span>
+            <span style={{ color: "#b91c1c" }}>❌ Selhalo: {progress.failed.length}</span>
+          </div>
+        </div>
+      )}
+
+      {log.length > 0 && (
+        <div style={{ background: "#1c2b22", borderRadius: 16, padding: "20px 24px", color: "#b7d9c7", fontFamily: "monospace", fontSize: "0.78rem", lineHeight: 1.7, maxHeight: 340, overflowY: "auto" }}>
+          {log.map((line, i) => <div key={i}>{line}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState("cekajici");
+  const [topTab, setTopTab] = useState("zadosti");
   const [vetProfiles, setVetProfiles] = useState([]);
   const [partnerProfiles, setPartnerProfiles] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -144,8 +392,6 @@ export default function AdminPage() {
     );
   };
 
-  const isArticlesTab = tab === "clanky";
-
   return (
     <div style={{ minHeight: "100vh", background: "#f7f4ef", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');`}</style>
@@ -159,25 +405,25 @@ export default function AdminPage() {
         {msg && <span style={{ marginLeft: "auto", background: "rgba(255,255,255,0.15)", color: "#fff", borderRadius: 20, padding: "5px 14px", fontSize: "0.82rem", fontWeight: 600 }}>{msg}</span>}
       </nav>
 
-      {/* Top-level tabs */}
       <div style={{ background: "#fff", borderBottom: "1px solid #ede8e0", padding: "0 32px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", gap: 0 }}>
           {[
-            { id: "cekajici", label: "🔔 Žádosti partnerů" },
+            { id: "zadosti", label: "🔔 Žádosti partnerů" },
             { id: "clanky", label: "📝 Články (rady)" },
+            { id: "nastroje", label: "⚙️ Nástroje" },
           ].map(t => (
             <button
               key={t.id}
-              onClick={() => { setTab(t.id); setSelected(null); }}
+              onClick={() => { setTopTab(t.id); setSelected(null); }}
               style={{
                 padding: "14px 20px",
                 background: "none",
                 border: "none",
-                borderBottom: (tab === t.id || (t.id === "cekajici" && tab !== "clanky")) ? "2px solid #2d6a4f" : "2px solid transparent",
+                borderBottom: topTab === t.id ? "2px solid #2d6a4f" : "2px solid transparent",
                 cursor: "pointer",
                 fontSize: "0.9rem",
-                fontWeight: (tab === t.id || (t.id === "cekajici" && tab !== "clanky")) ? 700 : 500,
-                color: (tab === t.id || (t.id === "cekajici" && tab !== "clanky")) ? "#2d6a4f" : "#8a9e92",
+                fontWeight: topTab === t.id ? 700 : 500,
+                color: topTab === t.id ? "#2d6a4f" : "#8a9e92",
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
@@ -189,8 +435,10 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
-        {isArticlesTab ? (
+        {topTab === "clanky" ? (
           <AdminArticlesTab />
+        ) : topTab === "nastroje" ? (
+          <AdminToolsTab />
         ) : (
           <div style={{ display: "flex", gap: 24 }}>
             <div style={{ width: 420, flexShrink: 0 }}>
@@ -317,7 +565,7 @@ export default function AdminPage() {
                     )}
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #ede8e0" }}>
                       <button onClick={() => { setBlacklistEmail(selected.email || selected.profiles?.email || ""); setTab("blacklist"); setSelected(null); }} style={{ background: "none", border: "none", color: "#b91c1c", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textDecoration: "underline" }}>
-                        🚫 Přidat uživatele na blacklist
+                          🚫 Přidat uživatele na blacklist
                       </button>
                     </div>
                   </div>
