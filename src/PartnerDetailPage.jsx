@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "./supabase";
 
@@ -7,6 +7,7 @@ const TYPE_CONFIG = {
   vencitel: { icon: "🦮", label: "Venčitel psů", color: "#2d6a4f", light: "#e8f5ef", cta: "Kontaktovat venčitele", ctaIcon: "📞", showReservation: true, priceLabel: "Cena za venčení", priceKey: "price_per_walk" },
   veterinar: { icon: "🩺", label: "Veterinární klinika", color: "#b91c1c", light: "#fce4ec", cta: "Zavolat klinice", ctaIcon: "📞", showReservation: false },
   prodejce: { icon: "🛍️", label: "Partnerský prodejce", color: "#e07b39", light: "#fdf0e6", cta: "Kontaktovat prodejce", ctaIcon: "📞", showReservation: false },
+  vycvik: { icon: "🎓", label: "Výcvikové středisko", color: "#2d6a4f", light: "#e8f5ef", cta: "Kontaktovat trenéra", ctaIcon: "📞", showReservation: false },
 };
 
 function StarRating({ value, onChange, readonly = false }) {
@@ -43,7 +44,65 @@ export default function PartnerDetailPage() {
   const [reviewSaving, setReviewSaving] = useState(false);
   const [reviewMsg, setReviewMsg] = useState("");
 
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
   useEffect(() => { fetchPartner(); }, [id]);
+
+  // Load Leaflet for vycvik map
+  useEffect(() => {
+    if (partner?.type === "vycvik" && partner.lat && partner.lng) {
+      if (!document.getElementById("leaflet-css")) {
+        const link = document.createElement("link"); link.id = "leaflet-css"; link.rel = "stylesheet";
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(link);
+      }
+      if (!document.getElementById("leaflet-js")) {
+        const script = document.createElement("script"); script.id = "leaflet-js";
+        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; document.head.appendChild(script);
+      }
+      const tryInit = () => {
+        if (window.L && mapRef.current && !mapInstanceRef.current) {
+          initMiniMap();
+        } else if (!window.L) {
+          setTimeout(tryInit, 200);
+        }
+      };
+      setTimeout(tryInit, 300);
+    }
+  }, [partner]);
+
+  const initMiniMap = () => {
+    if (!window.L || !mapRef.current || !partner?.lat || !partner?.lng) return;
+    const map = window.L.map(mapRef.current, { zoomControl: true, scrollWheelZoom: false }).setView([partner.lat, partner.lng], 11);
+    window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OSM" }).addTo(map);
+
+    const color = "#2d6a4f";
+
+    // Kruh spadove oblasti
+    if (partner.metadata?.area_radius_km) {
+      window.L.circle([partner.lat, partner.lng], {
+        radius: partner.metadata.area_radius_km * 1000,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.1,
+        weight: 1.5,
+        opacity: 0.5,
+      }).addTo(map);
+      const bounds = window.L.latLng(partner.lat, partner.lng).toBounds(partner.metadata.area_radius_km * 2000);
+      map.fitBounds(bounds, { padding: [20, 20] });
+    }
+
+    // Pin
+    const icon = window.L.divIcon({
+      className: "",
+      html: `<div style="background:${color};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;">🎓</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+    window.L.marker([partner.lat, partner.lng], { icon }).addTo(map);
+
+    mapInstanceRef.current = map;
+  };
 
   const fetchPartner = async () => {
     let { data } = await supabase.from("partner_profiles").select("*").eq("id", id).eq("approved", true).single();
@@ -58,7 +117,6 @@ export default function PartnerDetailPage() {
     setLoading(false);
     if (data) {
       fetchReviews(data.id);
-      // Track profile view
       try {
         await supabase.rpc("increment_partner_profile_views", { partner_id: data.id, partner_type: partnerTypeForTracking });
       } catch (e) { console.error("View tracking failed:", e); }
@@ -212,6 +270,7 @@ export default function PartnerDetailPage() {
 
   const oteviraciDoba = partner.opening_hours || partner.metadata?.opening_hours || null;
   const tym = partner.metadata?.tym || [];
+  const hasVycvikPrice = partner.type === "vycvik" && (partner.metadata?.price_individual || partner.metadata?.price_group || partner.metadata?.kurz_price);
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.88rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
   const labelStyle = { fontSize: "0.72rem", fontWeight: 600, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 5 };
@@ -321,6 +380,115 @@ export default function PartnerDetailPage() {
                     <p style={{ color: "#4a5e52", fontSize: "0.9rem", lineHeight: 1.7, margin: 0 }}>{partner.metadata.experience}</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {partner.type === "vycvik" && (partner.metadata?.area_radius_km || partner.metadata?.formaty?.length || partner.metadata?.mista?.length) && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>🎓 O cvičáku</h2>
+                {partner.metadata?.area_radius_km && (
+                  <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ fontSize: "0.7rem", color: "#2d6a4f", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Spádová oblast</div>
+                    <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.area_radius_km} km</div>
+                    <div style={{ fontSize: "0.72rem", color: "#4a5e52", marginTop: 2 }}>Dojíždíme za klienty v této oblasti</div>
+                  </div>
+                )}
+                {partner.metadata?.formaty?.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Formát výuky</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {partner.metadata.formaty.map(f => (
+                        <span key={f} style={{ background: "#e8f5ef", color: "#2d6a4f", border: "1px solid #b7d9c7", borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem", fontWeight: 600 }}>{f}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {partner.metadata?.mista?.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#8a9e92", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Místo výcviku</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {partner.metadata.mista.map(m => (
+                        <span key={m} style={{ background: "#f7f4ef", color: "#4a5e52", border: "1px solid #ede8e0", borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem" }}>📍 {m}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {partner.type === "vycvik" && hasVycvikPrice && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 16 }}>💰 Ceník</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+                  {partner.metadata?.price_individual && (
+                    <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c2b22", marginBottom: 2 }}>🎯 Individuální lekce</div>
+                        {partner.metadata?.duration_individual && <div style={{ fontSize: "0.78rem", color: "#4a5e52" }}>{partner.metadata.duration_individual} minut</div>}
+                      </div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.price_individual} Kč</div>
+                    </div>
+                  )}
+                  {partner.metadata?.price_group && (
+                    <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c2b22", marginBottom: 2 }}>👥 Skupinová lekce</div>
+                        {partner.metadata?.duration_group && <div style={{ fontSize: "0.78rem", color: "#4a5e52" }}>{partner.metadata.duration_group} minut</div>}
+                      </div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.price_group} Kč</div>
+                    </div>
+                  )}
+                  {partner.metadata?.kurz_price && (
+                    <div style={{ background: "#e8f5ef", borderRadius: 12, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1c2b22", marginBottom: 2 }}>📚 {partner.metadata.kurz_name || "Kurz"}</div>
+                        {partner.metadata?.kurz_lekci && <div style={{ fontSize: "0.78rem", color: "#4a5e52" }}>{partner.metadata.kurz_lekci} lekcí</div>}
+                      </div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#2d6a4f", fontFamily: "'DM Serif Display', serif" }}>{partner.metadata.kurz_price} Kč</div>
+                    </div>
+                  )}
+                </div>
+                {partner.metadata?.price_note && (
+                  <div style={{ marginTop: 12, padding: "10px 14px", background: "#fff8e1", borderRadius: 10, fontSize: "0.82rem", color: "#7a5b00", border: "1px solid #ffecb3" }}>
+                    💡 {partner.metadata.price_note}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {partner.type === "vycvik" && partner.metadata?.typy_vycviku?.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>🎯 Typy výcviku</h2>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {partner.metadata.typy_vycviku.map(t => (
+                    <span key={t} style={{ background: cfg.light, color: cfg.color, border: `1px solid ${cfg.color}30`, borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem", fontWeight: 600 }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {partner.type === "vycvik" && partner.metadata?.vekove_kategorie?.length > 0 && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>🐕 Věkové kategorie</h2>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {partner.metadata.vekove_kategorie.map(v => (
+                    <span key={v} style={{ background: "#f7f4ef", color: "#4a5e52", border: "1px solid #ede8e0", borderRadius: 20, padding: "6px 14px", fontSize: "0.82rem" }}>{v}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {partner.type === "vycvik" && partner.metadata?.experience && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "24px 28px", border: "1px solid #ede8e0" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>📜 Zkušenosti & certifikáty</h2>
+                <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.7, margin: 0, whiteSpace: "pre-line" }}>{partner.metadata.experience}</p>
+              </div>
+            )}
+
+            {partner.type === "vycvik" && partner.metadata?.achievements && (
+              <div style={{ background: "#fff8e1", borderRadius: 16, padding: "24px 28px", border: "1px solid #f5c99a" }}>
+                <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", marginBottom: 14 }}>🏆 Úspěchy</h2>
+                <p style={{ color: "#4a5e52", fontSize: "0.92rem", lineHeight: 1.7, margin: 0, whiteSpace: "pre-line" }}>{partner.metadata.achievements}</p>
               </div>
             )}
 
@@ -615,6 +783,18 @@ export default function PartnerDetailPage() {
                 </a>
               )}
             </div>
+
+            {partner.type === "vycvik" && partner.lat && partner.lng && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "20px", border: "1px solid #ede8e0" }}>
+                <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1rem", color: "#1c2b22", marginBottom: 12 }}>🗺 Umístění</h3>
+                <div ref={mapRef} style={{ height: 240, width: "100%", borderRadius: 10, overflow: "hidden" }} />
+                {partner.metadata?.area_radius_km && (
+                  <div style={{ fontSize: "0.75rem", color: "#8a9e92", marginTop: 8, textAlign: "center" }}>
+                    Dojíždíme v okruhu <strong style={{ color: "#2d6a4f" }}>{partner.metadata.area_radius_km} km</strong>
+                  </div>
+                )}
+              </div>
+            )}
 
             {(partner.metadata?.capacity || unitPrice > 0) && (
               <div style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #ede8e0" }}>
