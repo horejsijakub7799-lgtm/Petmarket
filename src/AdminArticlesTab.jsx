@@ -33,25 +33,67 @@ const EMPTY_FORM = {
   published: false,
 };
 
+// Helper: wrap a promise with a timeout
+const withTimeout = (promise, ms, label = "Request") => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`⏱️ ${label} timeout po ${ms / 1000}s`)), ms)
+    ),
+  ]);
+};
+
 export default function AdminArticlesTab() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState(null); // "draft" | "publish" | null
   const [msg, setMsg] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const fetchArticles = async () => {
     setLoading(true);
-    const { data } = await supabase.from("articles").select("*").order("created_at", { ascending: false });
-    setArticles(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setArticles(data || []);
+    } catch (err) {
+      console.error("[fetchArticles] error:", err);
+      setMsg("❌ Chyba načítání: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchArticles();
   }, []);
+
+  // DIAGNOSTIC: session check helper
+  const checkSession = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error("[checkSession] error:", error);
+      throw new Error("Nepodařilo se ověřit session: " + error.message);
+    }
+    const session = data?.session;
+    console.log("[checkSession] session:", session);
+    if (!session) {
+      throw new Error("Nejsi přihlášen. Obnov stránku a přihlaš se znovu.");
+    }
+    const expiresAt = session.expires_at * 1000;
+    const now = Date.now();
+    console.log("[checkSession] expires at:", new Date(expiresAt), "now:", new Date(now));
+    if (expiresAt < now) {
+      throw new Error("Session expirovala. Obnov stránku a přihlaš se znovu.");
+    }
+    return session;
+  };
 
   const startNew = () => {
     setForm(EMPTY_FORM);
@@ -86,18 +128,32 @@ export default function AdminArticlesTab() {
   const handleCoverUpload = async (file) => {
     if (!file) return;
     setUploadingImage(true);
+    setMsg("");
     try {
+      await checkSession();
+
       const fileName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-      const { error: uploadError } = await supabase.storage.from("articles").upload(fileName, file);
+      console.log("[upload] start:", fileName);
+
+      const uploadPromise = supabase.storage.from("articles").upload(fileName, file);
+      const { error: uploadError } = await withTimeout(uploadPromise, 15000, "Upload");
+
       if (uploadError) throw uploadError;
+
       const { data: urlData } = supabase.storage.from("articles").getPublicUrl(fileName);
+      console.log("[upload] success, url:", urlData.publicUrl);
+
       setForm(f => ({ ...f, cover_image: urlData.publicUrl }));
       setMsg("✅ Obrázek nahrán");
       setTimeout(() => setMsg(""), 2000);
     } catch (err) {
-      setMsg("❌ Chyba při nahrávání: " + err.message);
+      console.error("[handleCoverUpload] full error:", err);
+      console.error("[handleCoverUpload] message:", err?.message);
+      console.error("[handleCoverUpload] details:", err?.details, err?.hint, err?.code);
+      setMsg("❌ Chyba při nahrávání: " + (err?.message || "neznámá chyba"));
+    } finally {
+      setUploadingImage(false);
     }
-    setUploadingImage(false);
   };
 
   const handleSave = async (publish = null) => {
@@ -106,29 +162,39 @@ export default function AdminArticlesTab() {
       return;
     }
 
+    const willPublish = publish !== null ? publish : form.published;
     setSaving(true);
+    setSavingMode(willPublish ? "publish" : "draft");
     setMsg("");
 
-    const finalSlug = SLUGIFY(form.slug);
-    const willPublish = publish !== null ? publish : form.published;
-
-    const payload = {
-      ...form,
-      slug: finalSlug,
-      published: willPublish,
-      published_at: willPublish && !form.published ? new Date().toISOString() : undefined,
-    };
-
-    // Remove undefined
-    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
-
     try {
-      let result;
+      // 1. Verify auth session is active
+      const session = await checkSession();
+      console.log("[handleSave] session OK, user id:", session.user.id);
+
+      const finalSlug = SLUGIFY(form.slug);
+
+      const payload = {
+        ...form,
+        slug: finalSlug,
+        published: willPublish,
+        published_at: willPublish && !form.published ? new Date().toISOString() : undefined,
+      };
+      Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+      console.log("[handleSave] payload:", payload);
+      console.log("[handleSave] mode:", editing === "new" ? "INSERT" : "UPDATE", "editing:", editing);
+
+      // 2. Do the insert/update with timeout
+      let queryPromise;
       if (editing === "new") {
-        result = await supabase.from("articles").insert(payload).select().single();
+        queryPromise = supabase.from("articles").insert(payload).select().single();
       } else {
-        result = await supabase.from("articles").update(payload).eq("id", editing).select().single();
+        queryPromise = supabase.from("articles").update(payload).eq("id", editing).select().single();
       }
+
+      const result = await withTimeout(queryPromise, 10000, "Uložení článku");
+      console.log("[handleSave] result:", result);
 
       if (result.error) throw result.error;
 
@@ -138,25 +204,45 @@ export default function AdminArticlesTab() {
       setForm(EMPTY_FORM);
       setTimeout(() => setMsg(""), 3000);
     } catch (err) {
-      console.error(err);
-      setMsg("❌ Chyba: " + err.message);
+      console.error("[handleSave] full error object:", err);
+      console.error("[handleSave] message:", err?.message);
+      console.error("[handleSave] code:", err?.code);
+      console.error("[handleSave] details:", err?.details);
+      console.error("[handleSave] hint:", err?.hint);
+      setMsg("❌ Chyba: " + (err?.message || "neznámá chyba (viz konzole)"));
+    } finally {
+      setSaving(false);
+      setSavingMode(null);
     }
-    setSaving(false);
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Opravdu smazat článek? Nevratná akce.")) return;
-    await supabase.from("articles").delete().eq("id", id);
-    await fetchArticles();
+    try {
+      await checkSession();
+      const { error } = await supabase.from("articles").delete().eq("id", id);
+      if (error) throw error;
+      await fetchArticles();
+    } catch (err) {
+      console.error("[handleDelete] error:", err);
+      setMsg("❌ Chyba při mazání: " + err.message);
+    }
   };
 
   const togglePublish = async (article) => {
-    const newState = !article.published;
-    await supabase.from("articles").update({
-      published: newState,
-      published_at: newState && !article.published_at ? new Date().toISOString() : article.published_at,
-    }).eq("id", article.id);
-    await fetchArticles();
+    try {
+      await checkSession();
+      const newState = !article.published;
+      const { error } = await supabase.from("articles").update({
+        published: newState,
+        published_at: newState && !article.published_at ? new Date().toISOString() : article.published_at,
+      }).eq("id", article.id);
+      if (error) throw error;
+      await fetchArticles();
+    } catch (err) {
+      console.error("[togglePublish] error:", err);
+      setMsg("❌ Chyba: " + err.message);
+    }
   };
 
   const inputStyle = { width: "100%", border: "1.5px solid #ede8e0", borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", outline: "none", fontFamily: "'DM Sans', sans-serif", background: "#f7f4ef", boxSizing: "border-box", color: "#1c2b22" };
@@ -216,7 +302,7 @@ export default function AdminArticlesTab() {
               <label style={{ display: "block", border: "2px dashed #b7d9c7", borderRadius: 10, padding: "24px", textAlign: "center", cursor: "pointer", background: "#f7f4ef", color: "#8a9e92" }}>
                 <div style={{ fontSize: "2rem", marginBottom: 6 }}>📷</div>
                 <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#4a5e52" }}>{uploadingImage ? "Nahrávám..." : "Klikni a vyber obrázek"}</div>
-                <input type="file" accept="image/*" onChange={e => handleCoverUpload(e.target.files[0])} style={{ display: "none" }} />
+                <input type="file" accept="image/*" onChange={e => handleCoverUpload(e.target.files[0])} style={{ display: "none" }} disabled={uploadingImage} />
               </label>
             )}
           </div>
@@ -255,14 +341,14 @@ Toto je úvodní odstavec článku.
             <input value={form.author_name} onChange={e => setForm(f => ({ ...f, author_name: e.target.value }))} style={inputStyle} />
           </div>
 
-          {msg && <div style={{ background: msg.includes("❌") || msg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${msg.includes("❌") || msg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", color: msg.includes("❌") || msg.includes("⚠️") ? "#880e4f" : "#1b5e20" }}>{msg}</div>}
+          {msg && <div style={{ background: msg.includes("❌") || msg.includes("⚠️") ? "#fce4ec" : "#e8f5e9", border: `1px solid ${msg.includes("❌") || msg.includes("⚠️") ? "#f48fb1" : "#a5d6a7"}`, borderRadius: 10, padding: "10px 14px", fontSize: "0.9rem", color: msg.includes("❌") || msg.includes("⚠️") ? "#880e4f" : "#1b5e20", whiteSpace: "pre-wrap" }}>{msg}</div>}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 8, borderTop: "1px solid #ede8e0", marginTop: 8 }}>
-            <button onClick={() => handleSave(false)} disabled={saving} style={{ flex: 1, minWidth: 180, background: "#fff", color: "#2d6a4f", border: "2px solid #2d6a4f", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-              {saving ? "Ukládám..." : "💾 Uložit jako koncept"}
+            <button onClick={() => handleSave(false)} disabled={saving} style={{ flex: 1, minWidth: 180, background: "#fff", color: "#2d6a4f", border: "2px solid #2d6a4f", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", opacity: saving && savingMode !== "draft" ? 0.5 : 1 }}>
+              {savingMode === "draft" ? "Ukládám..." : "💾 Uložit jako koncept"}
             </button>
-            <button onClick={() => handleSave(true)} disabled={saving} style={{ flex: 1, minWidth: 180, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)" }}>
-              {saving ? "Publikuji..." : "🚀 Publikovat"}
+            <button onClick={() => handleSave(true)} disabled={saving} style={{ flex: 1, minWidth: 180, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)", opacity: saving && savingMode !== "publish" ? 0.5 : 1 }}>
+              {savingMode === "publish" ? "Publikuji..." : "🚀 Publikovat"}
             </button>
           </div>
         </div>
