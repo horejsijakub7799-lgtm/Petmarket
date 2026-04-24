@@ -49,7 +49,7 @@ export default function AdminArticlesTab() {
     try {
       const { data, error } = await supabase
         .from("articles")
-        .select("*")
+        .select("id, slug, title, category, cover_image, published, views, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       console.log("[fetchArticles] loaded:", data?.length, "articles");
