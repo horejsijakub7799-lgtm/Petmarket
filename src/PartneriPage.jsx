@@ -70,16 +70,16 @@ export default function PartneriPage() {
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 20 }}>
           {PARTNERI.map(p => (
-            <div key={p.id} style={{ background: "#fff", borderRadius: 18, padding: "28px 24px", border: `1.5px solid ${p.available ? "#b7d9c7" : "#ede8e0"}`, boxShadow: "0 2px 12px rgba(44,80,58,0.07)", display: "flex", flexDirection: "column", gap: 14, opacity: p.available ? 1 : 0.75 }}>
+            <div key={p.id} style={{ background: "#fff", borderRadius: 18, padding: "28px 24px", border: `1.5px solid ${p.available ? "#b7d9c7" : "#ede8e0"}`, boxShadow: "0 2px 12px rgba(44,80,58,0.07)", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 14, opacity: p.available ? 1 : 0.75 }}>
               <div style={{ fontSize: "2.5rem" }}>{p.icon}</div>
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
                   <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "1.2rem", color: "#1c2b22", margin: 0 }}>{p.title}</h2>
                   {!p.available && <span style={{ background: "#f7f4ef", color: "#8a9e92", borderRadius: 20, padding: "2px 10px", fontSize: "0.68rem", fontWeight: 600, whiteSpace: "nowrap" }}>Brzy</span>}
                 </div>
                 <p style={{ color: "#4a5e52", fontSize: "0.88rem", lineHeight: 1.6, margin: 0 }}>{p.desc}</p>
               </div>
-              <div style={{ marginTop: "auto" }}>
+              <div style={{ marginTop: "auto", width: "100%" }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: "1rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 2 }}>{p.price}</div>
                   <div style={{ fontSize: "0.78rem", color: "#8a9e92", fontWeight: 500 }}>{p.priceDetail}</div>
