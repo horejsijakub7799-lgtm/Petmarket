@@ -6,26 +6,19 @@ const PARTNERI = [
     icon: "🏨",
     title: "Psí hotel",
     desc: "Nabídněte ubytování pro psy majitelům kteří odjíždí na dovolenou nebo služební cestu.",
-    price: "od 399 Kč/měsíc",
+    price: "Zdarma",
+    priceDetail: "10 % z každé rezervace",
     url: "/hotel/registrace",
     available: true,
   },
   {
-    id: "venceni",
-    icon: "🦮",
-    title: "Venčitel psů",
-    desc: "Nabídněte své služby venčení psů v okolí. Oslovte majitele kteří nemají čas.",
-    price: "od 199 Kč/měsíc",
-    url: "/vencitel/registrace",
-    available: true,
-  },
-  {
-    id: "vycvik",
-    icon: "🎓",
-    title: "Výcvikové středisko",
-    desc: "Nabídněte výcvik psů — individuální lekce, skupinové kurzy, agility, obranu. Oslovte majitele v okolí.",
-    price: "od 199 Kč/měsíc",
-    url: "/vycvik/registrace",
+    id: "prodejce",
+    icon: "🛒",
+    title: "Pet shop",
+    desc: "Prodávejte své produkty pro mazlíčky tisícům zákazníků na Pet Market.",
+    price: "Zdarma",
+    priceDetail: "10 % z každého prodeje",
+    url: "/prodejce/registrace",
     available: true,
   },
   {
@@ -34,16 +27,8 @@ const PARTNERI = [
     title: "Veterinární klinika",
     desc: "Zobrazujte svou kliniku na mapě, přijímejte dotazy od majitelů mazlíčků a budujte svou reputaci.",
     price: "od 1 490 Kč/měsíc",
+    priceDetail: "měsíční předplatné",
     url: "/veterinar/registrace",
-    available: true,
-  },
-  {
-    id: "prodejce",
-    icon: "🛍️",
-    title: "Partnerský prodejce",
-    desc: "Prodávejte své produkty pro mazlíčky tisícům zákazníků na Pet Market.",
-    price: "od 299 Kč/měsíc",
-    url: "/prodejce/registrace",
     available: true,
   },
   {
@@ -51,7 +36,8 @@ const PARTNERI = [
     icon: "🛡️",
     title: "Pojišťovna",
     desc: "Nabídněte pojištění mazlíčků přímo tam kde majitelé nakupují pro své mazlíčky.",
-    price: "individuální cena",
+    price: "Připravujeme",
+    priceDetail: "individuální podmínky",
     url: null,
     available: false,
   },
@@ -94,7 +80,10 @@ export default function PartneriPage() {
                 <p style={{ color: "#4a5e52", fontSize: "0.88rem", lineHeight: 1.6, margin: 0 }}>{p.desc}</p>
               </div>
               <div style={{ marginTop: "auto" }}>
-                <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 12 }}>{p.price}</div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: "1rem", fontWeight: 700, color: "#2d6a4f", marginBottom: 2 }}>{p.price}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#8a9e92", fontWeight: 500 }}>{p.priceDetail}</div>
+                </div>
                 {p.available ? (
                   <button onClick={() => navigate(p.url)} style={{ width: "100%", background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Zaregistrovat se →</button>
                 ) : (
@@ -111,8 +100,8 @@ export default function PartneriPage() {
             {[
               { icon: "📝", title: "1. Vyplníš formulář", desc: "Základní údaje o tvé firmě nebo službě. Zároveň si vytvoříš přihlašovací účet." },
               { icon: "✅", title: "2. Ověříme tě", desc: "Do 24 hodin zkontrolujeme vaše IČO a schválíme profil." },
-              { icon: "💳", title: "3. Zaplatíš", desc: "Jednoduchá platba kartou, měsíční předplatné." },
-              { icon: "🚀", title: "4. Jsi live", desc: "Váš profil se okamžitě zobrazí tisícům zákazníků. Spravujte rezervace v dashboardu." },
+              { icon: "🚀", title: "3. Jsi live", desc: "Váš profil se okamžitě zobrazí tisícům zákazníků. Spravujte rezervace a prodeje v dashboardu." },
+              { icon: "💰", title: "4. Vyděláváš", desc: "Platíš jen z reálných výsledků — provize z rezervací nebo prodejů. Žádné předplatné předem." },
             ].map(s => (
               <div key={s.title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ fontSize: "1.8rem" }}>{s.icon}</div>
