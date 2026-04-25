@@ -33,6 +33,16 @@ const EMPTY_FORM = {
   published: false,
 };
 
+// Timeout wrapper for promises
+const withTimeout = (promise, ms = 30000, label = "operation") => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} trvá déle než ${ms / 1000}s`)), ms)
+    ),
+  ]);
+};
+
 export default function AdminArticlesTab() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,21 +109,45 @@ export default function AdminArticlesTab() {
   const handleCoverUpload = async (file) => {
     if (!file) return;
     setUploadingImage(true);
-    setMsg("");
+    setMsg("⏳ Nahrávám obrázek...");
+    
     try {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error("Soubor je větší než 10MB");
+      }
+      
       const fileName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, "_")}`;
-      console.log("[upload] start:", fileName);
-      const { error: uploadError } = await supabase.storage.from("articles").upload(fileName, file);
-      if (uploadError) throw uploadError;
+      console.log("[upload] start:", fileName, "size:", file.size);
+      
+      // Upload with 30s timeout
+      const uploadPromise = supabase.storage
+        .from("articles")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+      
+      const { error: uploadError } = await withTimeout(uploadPromise, 30000, "upload");
+      
+      if (uploadError) {
+        console.error("[upload] supabase error:", uploadError);
+        throw uploadError;
+      }
+      
+      console.log("[upload] file uploaded, getting public URL...");
+      
       const { data: urlData } = supabase.storage.from("articles").getPublicUrl(fileName);
       console.log("[upload] success, url:", urlData.publicUrl);
+      
       setForm(f => ({ ...f, cover_image: urlData.publicUrl }));
       setMsg("✅ Obrázek nahrán");
       setTimeout(() => setMsg(""), 2000);
     } catch (err) {
-      console.error("[upload] error:", err);
-      setMsg("❌ Chyba: " + (err?.message || "neznámá"));
+      console.error("[upload] FULL ERROR:", err);
+      setMsg("❌ Upload selhal: " + (err?.message || "neznámá chyba"));
     } finally {
+      // CRITICAL: always reset state
       setUploadingImage(false);
     }
   };
@@ -134,7 +168,6 @@ export default function AdminArticlesTab() {
     try {
       const finalSlug = SLUGIFY(form.slug);
       
-      // Build clean payload
       const payload = {
         slug: finalSlug,
         title: form.title,
@@ -156,11 +189,19 @@ export default function AdminArticlesTab() {
 
       let data, error;
       if (editing === "new") {
-        const result = await supabase.from("articles").insert(payload).select().single();
+        const result = await withTimeout(
+          supabase.from("articles").insert(payload).select().single(),
+          15000,
+          "insert"
+        );
         data = result.data;
         error = result.error;
       } else {
-        const result = await supabase.from("articles").update(payload).eq("id", editing).select().single();
+        const result = await withTimeout(
+          supabase.from("articles").update(payload).eq("id", editing).select().single(),
+          15000,
+          "update"
+        );
         data = result.data;
         error = result.error;
       }
@@ -273,9 +314,9 @@ export default function AdminArticlesTab() {
                 <button onClick={() => setForm(f => ({ ...f, cover_image: "" }))} style={{ position: "absolute", top: 8, right: 8, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 20, padding: "4px 12px", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>✕ Odebrat</button>
               </div>
             ) : (
-              <label style={{ display: "block", border: "2px dashed #b7d9c7", borderRadius: 10, padding: "24px", textAlign: "center", cursor: "pointer", background: "#f7f4ef", color: "#8a9e92" }}>
+              <label style={{ display: "block", border: "2px dashed #b7d9c7", borderRadius: 10, padding: "24px", textAlign: "center", cursor: uploadingImage ? "not-allowed" : "pointer", background: "#f7f4ef", color: "#8a9e92", opacity: uploadingImage ? 0.6 : 1 }}>
                 <div style={{ fontSize: "2rem", marginBottom: 6 }}>📷</div>
-                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#4a5e52" }}>{uploadingImage ? "Nahrávám..." : "Klikni a vyber obrázek"}</div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#4a5e52" }}>{uploadingImage ? "Nahrávám... (max 30s)" : "Klikni a vyber obrázek"}</div>
                 <input type="file" accept="image/*" onChange={e => handleCoverUpload(e.target.files[0])} style={{ display: "none" }} disabled={uploadingImage} />
               </label>
             )}
@@ -304,15 +345,15 @@ export default function AdminArticlesTab() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", paddingTop: 8, borderTop: "1px solid #ede8e0", marginTop: 8 }}>
             <button 
               onClick={() => { console.log("DRAFT button clicked"); handleSave(false); }} 
-              disabled={saving} 
-              style={{ flex: 1, minWidth: 180, background: "#fff", color: "#2d6a4f", border: "2px solid #2d6a4f", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", opacity: saving && savingMode !== "draft" ? 0.5 : 1 }}
+              disabled={saving || uploadingImage} 
+              style={{ flex: 1, minWidth: 180, background: "#fff", color: "#2d6a4f", border: "2px solid #2d6a4f", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: (saving || uploadingImage) ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", opacity: (saving && savingMode !== "draft") || uploadingImage ? 0.5 : 1 }}
             >
               {savingMode === "draft" ? "Ukládám..." : "💾 Uložit jako koncept"}
             </button>
             <button 
               onClick={() => { console.log("PUBLISH button clicked"); handleSave(true); }} 
-              disabled={saving} 
-              style={{ flex: 1, minWidth: 180, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)", opacity: saving && savingMode !== "publish" ? 0.5 : 1 }}
+              disabled={saving || uploadingImage} 
+              style={{ flex: 1, minWidth: 180, background: "#2d6a4f", color: "#fff", border: "none", borderRadius: 10, padding: "12px", fontSize: "0.9rem", fontWeight: 600, cursor: (saving || uploadingImage) ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 2px 12px rgba(45,106,79,0.25)", opacity: (saving && savingMode !== "publish") || uploadingImage ? 0.5 : 1 }}
             >
               {savingMode === "publish" ? "Publikuji..." : "🚀 Publikovat"}
             </button>
