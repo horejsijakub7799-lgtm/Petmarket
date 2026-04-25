@@ -1031,9 +1031,14 @@ export default function PetMarket() {
                 <button className="btn-secondary" style={{ padding: "8px 14px", fontSize: "0.8rem", borderColor: "var(--sand-dark)", color: "var(--text-mid)" }} onClick={signOut}>Odhlásit</button>
               </div>
             ) : (
-              <button className="btn-secondary" style={{ padding: "8px 16px" }} onClick={() => setShowAuth(true)}>Přihlásit se</button>
+              <>
+                <button className="btn-secondary" style={{ padding: "8px 16px" }} onClick={() => setShowAuth(true)}>Přihlásit se / Zaregistrovat</button>
+                <button className="btn-secondary" style={{ padding: "8px 16px", borderColor: "var(--green)", color: "var(--green)" }} onClick={() => window.location.href = "/partneri"}>🤝 Stát se partnerem</button>
+              </>
             )}
-            <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding: "10px 20px" }}>+ Prodat</button>
+            {user && !isPartner && !isApprovedSeller && (
+              <button className="btn-primary" onClick={() => setShowAdd(true)} style={{ padding: "10px 20px" }}>+ Prodat</button>
+            )}
           </div>
         </div>
       </nav>
@@ -1162,47 +1167,6 @@ export default function PetMarket() {
           </div>
         )}
       </main>
-
-      {/* === PARTNER BANNER — above footer === */}
-      {!isPartner && !isApprovedSeller && (
-        <section style={{ background: "linear-gradient(135deg, #f2faf6 0%, #e8f5ef 100%)", borderTop: "1px solid var(--sand-dark)", borderBottom: "1px solid var(--sand-dark)", padding: "48px 24px" }}>
-          <div style={{ maxWidth: 920, margin: "0 auto", display: "flex", alignItems: "center", gap: 32, flexWrap: "wrap", justifyContent: "center", textAlign: "center" }}>
-            <div style={{ flex: "1 1 360px", minWidth: 280 }}>
-              <div style={{ display: "inline-block", background: "var(--green)", color: "#fff", padding: "4px 14px", borderRadius: 20, fontSize: "0.7rem", fontWeight: 700, marginBottom: 14, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                🤝 Pro partnery
-              </div>
-              <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "clamp(1.5rem, 3vw, 2rem)", color: "var(--text)", marginBottom: 12, letterSpacing: "-0.02em", lineHeight: 1.2 }}>
-                Jsi pet shop, hotel nebo veterinář?
-              </h2>
-              <p style={{ color: "var(--text-mid)", fontSize: "0.95rem", lineHeight: 1.65, marginBottom: 22, maxWidth: 540, marginLeft: "auto", marginRight: "auto" }}>
-                Připoj se k Pet Market a oslov tisíce majitelů mazlíčků v ČR a SK. Bez měsíčního poplatku — platíš jen z reálných výsledků.
-              </p>
-
-              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
-                {[
-                  { icon: "🏨", label: "Psí hotel" },
-                  { icon: "🛒", label: "Pet shop" },
-                  { icon: "🩺", label: "Veterinář" },
-                  { icon: "🛡️", label: "Pojišťovna" },
-                ].map(t => (
-                  <div key={t.label} style={{ background: "#fff", border: "1px solid var(--sand-dark)", borderRadius: 30, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, fontSize: "0.85rem", color: "var(--text-mid)", fontWeight: 600 }}>
-                    <span style={{ fontSize: "1rem" }}>{t.icon}</span>
-                    <span>{t.label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                className="btn-primary"
-                onClick={() => window.location.href = "/partneri"}
-                style={{ padding: "14px 32px", fontSize: "0.95rem", borderRadius: 50 }}
-              >
-                Stát se partnerem →
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
 
       {selected && <DetailModal
         item={selected}
