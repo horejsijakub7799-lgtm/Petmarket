@@ -55,14 +55,11 @@ const CSS = `
 `;
 
 const SERVICES = [
-  { id: "bazar", label: "Bazar věcí", icon: "🛍️" },
-  { id: "veterinar", label: "Veterinární kliniky", icon: "🩺" },
-  { id: "venceni", label: "Venčení", icon: "🦮" },
-  { id: "vycvik", label: "Výcvik psů", icon: "🎓" },
+  { id: "bazar", label: "Bazar", icon: "🛍️" },
+  { id: "partneri", label: "Pet shopy", icon: "🏪" },
+  { id: "veterinar", label: "Veterináři", icon: "🩺" },
   { id: "hotel", label: "Psí hotely", icon: "🏨" },
-  { id: "pojisteni", label: "Pojištění mazlíčka", icon: "🛡️" },
-  { id: "partneri", label: "Partnerští prodejci", icon: "🤝" },
-  { id: "rady", label: "Rady pro mazlíčky", icon: "📖" },
+  { id: "pojisteni", label: "Pojištění", icon: "🛡️" },
 ];
 
 const CATS = [
@@ -975,11 +972,8 @@ export default function PetMarket() {
     if (service.id === "bazar") setActiveService("bazar");
     else if (service.id === "veterinar") window.location.href = "/veterinari";
     else if (service.id === "hotel") window.location.href = "/hotely";
-    else if (service.id === "venceni") window.location.href = "/venceni";
-    else if (service.id === "vycvik") window.location.href = "/vycvik";
     else if (service.id === "partneri") window.location.href = "/shop";
     else if (service.id === "pojisteni") window.location.href = "/pojisteni";
-    else if (service.id === "rady") window.location.href = "/rady";
     else setComingSoon(service);
   };
 
@@ -1056,34 +1050,34 @@ export default function PetMarket() {
           {/* LEFT — Content */}
           <div style={{ flex: "1 1 440px", minWidth: 280, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
             <div style={{ display: "inline-block", background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", color: "#fff", padding: "3px 10px", borderRadius: 20, fontSize: "0.68rem", fontWeight: 600, marginBottom: 10, border: "1px solid rgba(255,255,255,0.2)" }}>
-              🇨🇿 Tržiště pro mazlíčky · Celá ČR
+              🇨🇿🇸🇰 Marketplace pro mazlíčky · ČR a Slovensko
             </div>
-            <h1 style={{ color: "#fff", fontSize: "clamp(1.3rem, 2.2vw, 1.8rem)", marginBottom: 6, letterSpacing: "-0.02em", lineHeight: 1.15, fontFamily: "'DM Serif Display', serif" }}>
-              Vše pro tvého mazlíčka — <span style={{ color: "#f5c97a", fontStyle: "italic" }}>z druhé ruky</span>
+            <h1 style={{ color: "#fff", fontSize: "clamp(1.4rem, 2.4vw, 2rem)", marginBottom: 8, letterSpacing: "-0.02em", lineHeight: 1.15, fontFamily: "'DM Serif Display', serif" }}>
+              Vše pro tvého mazlíčka
             </h1>
-            <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.82rem", marginBottom: 12, lineHeight: 1.5, maxWidth: 460 }}>
-              Kupuj a prodávej věci pro mazlíčky, najdi veterináře, hotel nebo pojištění. Vše na jednom místě.
+            <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.85rem", marginBottom: 14, lineHeight: 1.5, maxWidth: 480 }}>
+              Bazar, pet shopy, veterináři a hotely. Vše na jednom místě.
             </p>
 
-            <div style={{ display: "flex", background: "#fff", borderRadius: 50, overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.2)", width: "100%", maxWidth: 480, marginBottom: 12 }}>
+            <div style={{ display: "flex", background: "#fff", borderRadius: 50, overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.2)", width: "100%", maxWidth: 480, marginBottom: 14 }}>
               <span style={{ display: "flex", alignItems: "center", padding: "0 12px 0 16px", color: "var(--text-light)", fontSize: "0.95rem", flexShrink: 0 }}>🔍</span>
               <input className="input-field" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, border: "none", background: "transparent", borderRadius: 0, padding: "9px 4px", minWidth: 0, fontSize: "0.85rem" }} placeholder="Hledat pelíšek, granule, klec…" />
               <button className="btn-primary" style={{ borderRadius: 50, margin: 4, padding: "7px 18px", fontSize: "0.82rem", flexShrink: 0 }} onClick={() => { }}>Hledat</button>
             </div>
 
-            {/* Stats inline */}
-            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
+            {/* Trust row instead of stats */}
+            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
               {[
-                { value: `${items.length}+`, label: "inzerátů" },
-                { value: "350+", label: "prodejců" },
-                { value: "4.8 ★", label: "hodnocení", gold: true },
-              ].map((s, i, arr) => (
-                <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div>
-                    <div style={{ color: s.gold ? "#f5c97a" : "#fff", fontSize: "0.92rem", fontWeight: 700, fontFamily: "'DM Serif Display', serif" }}>{s.value}</div>
-                    <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.62rem" }}>{s.label}</div>
+                { icon: "🔒", label: "Bezpečné platby" },
+                { icon: "✓", label: "Ověření prodejci" },
+                { icon: "🇨🇿🇸🇰", label: "ČR a Slovensko" },
+              ].map((t, i, arr) => (
+                <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.9)", fontSize: "0.78rem", fontWeight: 600 }}>
+                    <span style={{ fontSize: "0.85rem" }}>{t.icon}</span>
+                    <span>{t.label}</span>
                   </div>
-                  {i < arr.length - 1 && <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.25)" }} />}
+                  {i < arr.length - 1 && <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.25)" }} />}
                 </div>
               ))}
             </div>
@@ -1095,8 +1089,8 @@ export default function PetMarket() {
               <div style={{ position: "absolute", top: 0, left: "10%", background: "rgba(255,255,255,0.95)", borderRadius: 12, padding: "8px 12px", boxShadow: "0 8px 20px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 8, transform: "rotate(-4deg)" }}>
                 <div style={{ fontSize: "1.4rem" }}>🐕</div>
                 <div>
-                  <div style={{ fontSize: "0.65rem", color: "#8a9e92", fontWeight: 600 }}>Pelíšek L</div>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2d6a4f" }}>450 Kč</div>
+                  <div style={{ fontSize: "0.65rem", color: "#8a9e92", fontWeight: 600 }}>Postroj Julius</div>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2d6a4f" }}>250 Kč</div>
                 </div>
               </div>
 
@@ -1109,10 +1103,10 @@ export default function PetMarket() {
               </div>
 
               <div style={{ position: "absolute", bottom: 0, left: 0, background: "rgba(255,255,255,0.95)", borderRadius: 12, padding: "8px 12px", boxShadow: "0 8px 20px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 8, transform: "rotate(-2deg)" }}>
-                <div style={{ fontSize: "1.4rem" }}>🐹</div>
+                <div style={{ fontSize: "1.4rem" }}>🦴</div>
                 <div>
-                  <div style={{ fontSize: "0.65rem", color: "#8a9e92", fontWeight: 600 }}>Klec velká</div>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2d6a4f" }}>890 Kč</div>
+                  <div style={{ fontSize: "0.65rem", color: "#8a9e92", fontWeight: 600 }}>Granule Brit 12kg</div>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2d6a4f" }}>650 Kč</div>
                 </div>
               </div>
 
@@ -1197,9 +1191,40 @@ export default function PetMarket() {
         <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "var(--text)", color: "var(--white)", borderRadius: 30, padding: "12px 26px", fontSize: "0.88rem", fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 8px 28px rgba(0,0,0,0.2)", animation: "toastIn 0.3s ease" }}>{toast}</div>
       )}
 
-      <footer style={{ background: "var(--text)", color: "rgba(255,255,255,0.5)", padding: "24px", textAlign: "center", fontSize: "0.8rem" }}>
-        <span style={{ fontFamily: "'DM Serif Display',serif", color: "rgba(255,255,255,0.8)", fontSize: "1rem" }}>Pet Market</span>
-        {" "}· Tržiště pro mazlíčky · Celá ČR · {new Date().getFullYear()}
+      <footer style={{ background: "var(--text)", color: "rgba(255,255,255,0.5)", padding: "32px 24px 24px", fontSize: "0.85rem" }}>
+        <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", justifyContent: "space-between", marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+            <div style={{ minWidth: 200 }}>
+              <div style={{ fontFamily: "'DM Serif Display',serif", color: "rgba(255,255,255,0.9)", fontSize: "1.2rem", marginBottom: 8 }}>Pet Market</div>
+              <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>Marketplace pro mazlíčky<br />Česká republika a Slovensko</div>
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.78rem", fontWeight: 600, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Marketplace</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <a href="/" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🛍️ Bazar</a>
+                <a href="/shop" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🏪 Pet shopy</a>
+              </div>
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.78rem", fontWeight: 600, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Služby</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <a href="/veterinari" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🩺 Veterináři</a>
+                <a href="/hotely" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🏨 Psí hotely</a>
+                <a href="/pojisteni" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🛡️ Pojištění mazlíčků</a>
+              </div>
+            </div>
+            <div style={{ minWidth: 140 }}>
+              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.78rem", fontWeight: 600, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Komunita</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <a href="/rady" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>📖 Rady pro mazlíčky</a>
+                <a href="/partneri" style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem", textDecoration: "none" }}>🤝 Staň se partnerem</a>
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign: "center", color: "rgba(255,255,255,0.4)", fontSize: "0.78rem" }}>
+            © {new Date().getFullYear()} Pet Market · Marketplace pro mazlíčky · ČR a Slovensko
+          </div>
+        </div>
       </footer>
     </div>
   );
