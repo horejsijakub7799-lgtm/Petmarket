@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     // Změň 'users' na nějakou tabulku, kterou máš v DB
     // Například 'partners', 'products' - cokoliv co máš
     const { data, error } = await supabase
-      .from('users')
+      .from('products')
       .select('id')
       .limit(1)
 
